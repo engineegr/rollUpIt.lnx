@@ -116,7 +116,7 @@ if ! shopt -oq posix; then
   fi
 fi
 
-TMUX_CFG_PATH=~/Workspace/Sys/cfg_env/tmux.cfg
+TMUX_CFG_PATH=~/.tmux.cfg
 if [[ -x /usr/bin/tmux ]]; then
     $TMUX_CFG_PATH/start_tmux.sh 1>$TMUX_CFG_PATH/stdout.tmux.log 2>$TMUX_CFG_PATH/stderr.tmux.log
 else
