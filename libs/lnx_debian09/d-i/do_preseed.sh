@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# set -o errexit
+set -o errexit
 # To be failed when it tries to use undeclare variables
-# set -o nounset
+set -o nounset
 
 # 
 # Parameters
@@ -94,6 +94,7 @@ function inject_preseed_cfg_PRSD_ISO() {
     local -r root_dir_path="$1"
     local -r output_iso="$2"
     local -r user_name="$3"
+    local -r platform=${4:-"amd"}
 
     local preseed_fp="$root_dir_path/preseed.cfg"
     if [[ ! -f $preseed_fp ]]; then
@@ -103,11 +104,11 @@ function inject_preseed_cfg_PRSD_ISO() {
 
     inject_user_pwds_PRSD_ISO $preseed_fp
 
-    chmod +w -R $root_dir_path/SRC/install.386/
-    gunzip $root_dir_path/SRC/install.386/initrd.gz
-    echo $preseed_fp | cpio -H newc -o -A -F $root_dir_path/SRC/install.386/initrd
-    gzip $root_dir_path/SRC/install.386/initrd
-    chmod -w -R $root_dir_path/SRC/install.386/
+    chmod +w -R $root_dir_path/SRC/install.$platform/
+    gunzip $root_dir_path/SRC/install.$platform/initrd.gz
+    echo $preseed_fp | cpio -H newc -o -A -F $root_dir_path/SRC/install.$platform/initrd
+    gzip $root_dir_path/SRC/install.$platform/initrd
+    chmod -w -R $root_dir_path/SRC/install.$platform/
 
     md5sum `find -follow -type f` > $root_dir_path/SRC/md5sum.txt
 
@@ -137,12 +138,12 @@ function inject_user_pwds_PRSD_ISO() {
     fi
     local -r preseed_cfg_path="$1"
 
-    echo -n "Enter password for root"
+    printf "Enter password for root "
     read -s passwd_prd
 
     sed -i "0,/#d\-i passwd\/root\-password\-crypted password.*/ s/#d\-i passwd\/root\-password\-crypted password.*/#d\-i passwd\/root\-password\-crypted password `mkpasswd $passwd_prd`/" $preseed_cfg_path
     
-    echo -n "Enter password for a default user (likhobabinim)"
+    printf "\nEnter password for a default user (likhobabinim) "
     read -s passwd_prd                             
     sed -i "0,/#d\-i passwd\/user\-password\-crypted password.*/ s/#d\-i passwd\/user\-password\-crypted password.*/#d\-i passwd\/user\-password\-crypted password `mkpasswd $passwd_prd`/" $preseed_cfg_path
 }
