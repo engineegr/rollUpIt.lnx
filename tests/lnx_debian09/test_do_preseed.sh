@@ -6,7 +6,6 @@ set -o xtrace
 set -o nounset
 
 exec 2>stderr.log
-exec 1>stdout.log
 
 ROOT_DIR_ROLL_UP_IT="/home/likhobabin_im/Workspace/Sys/rollUpIt.lnx"
 

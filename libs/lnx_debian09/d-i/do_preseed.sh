@@ -49,18 +49,18 @@ function prepare_PRSD_ISO() {
     local -r rollUpIt_src_path="$2"
     local -r iso_fp="$3"
     local -r user_name="$4"
+    local -r platform=${5:-"amd"}
 
-    mkdir -p $root_dir_path/MOUNT-ISO $root_dir_path/SRC $root_dir_path/DST-ISO 2>/dev/null $root_dir_path/SRC/post/install.386
+    mkdir -p $root_dir_path/MOUNT-ISO $root_dir_path/SRC $root_dir_path/DST-ISO $root_dir_path/SRC/post/install.$platform 2>/dev/null 
 
     mount -o loop $iso_fp $root_dir_path/MOUNT-ISO
     find $root_dir_path/MOUNT-ISO -mindepth 1 -maxdepth 1 -exec cp -Rf {} $root_dir_path/SRC/ \;
 
-    cp -Rf $rollUpIt_src_path $root_dir_path/SRC/post/install.386
+    cp -Rf $rollUpIt_src_path $root_dir_path/SRC/post/install.$platform
 
     umount $root_dir_path/MOUNT-ISO
     chown -Rf "$user_name":"$user_name" $root_dir_path
 }
-
 # 
 # Parameters
 # @$1 - Root dir (work dir)
@@ -106,7 +106,11 @@ function inject_preseed_cfg_PRSD_ISO() {
 
     chmod +w -R $root_dir_path/SRC/install.$platform/
     gunzip $root_dir_path/SRC/install.$platform/initrd.gz
-    echo $preseed_fp | cpio -H newc -o -A -F $root_dir_path/SRC/install.$platform/initrd
+
+    cp $preseed_fp ./preseed.cfg
+    echo preseed.cfg | cpio -H newc -o -A -F $root_dir_path/SRC/install.$platform/initrd
+    rm ./preseed.cfg
+
     gzip $root_dir_path/SRC/install.$platform/initrd
     chmod -w -R $root_dir_path/SRC/install.$platform/
 
@@ -145,5 +149,6 @@ function inject_user_pwds_PRSD_ISO() {
     
     printf "\nEnter password for a default user (likhobabinim) "
     read -s passwd_prd                             
+
     sed -i "0,/#d\-i passwd\/user\-password\-crypted password.*/ s/#d\-i passwd\/user\-password\-crypted password.*/#d\-i passwd\/user\-password\-crypted password `mkpasswd $passwd_prd`/" $preseed_cfg_path
 }
