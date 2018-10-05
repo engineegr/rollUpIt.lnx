@@ -4,8 +4,6 @@ set -o errexit
 set -o xtrace
 set -o nounset
 
-#exec 2>stderr.log 1>stdout.log
-
 ROOT_DIR_ROLL_UP_IT="/home/likhobabinim/Workspace/post/install.386/rollUpIt.lnx"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
@@ -16,16 +14,8 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
 function main() {
 local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
 printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-    
-#    if [[ -z "$1" || -z "$2" ]]; then
-#        printf "$debug_prefix ${red_rollup_it} Error: empty parameters ${end_rollup_it}"
-#        exit 1
-#    fi     
-
-    declare -r local user="likhobabinim"
-    declare -r local pwd="NA"
-
-    rollUpIt_SM_RUI $user $pwd
+   
+    setUp_tftp_hpa_SM_RUI
 
 printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }

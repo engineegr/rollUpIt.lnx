@@ -29,9 +29,19 @@ if [[ -n "$debian_version" && "$debian_version" -ge 8 ]]; then
 	printf "$debug_prefix Debian version is $debian_version\n"
 	prepareSkel_SM_RUI
 	installDefPkgSuit_SM_RUI
-	createAdmUser_SM_RUI $1 $2
+
+    local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
+	if [[ -z "$isExist" ]]; then
+		printf "$debug_prefix The user doesn't exist \n"
+	    createAdmUser_SM_RUI $1 $2
+    else
+		printf "$debug_prefix The user exists. Copy skel config \n"
+        rsync -rtvu "$SKEL_DIR_ROLL_UP_IT/" "/home/$1"
+        chown -Rf "$1:$1" "/home/$1"
+	fi
+
 	prepareSudoersd_SM_RUI $1
-    setLocale_SM_RUI "en_US.UTF-8 UTF-8"
+    setLocale_SM_RUI "ru_RU.UTF-8 UTF-8"
     prepareSSH_SM_RUI
 else
 	printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't run scripts there is no a suitable distibutive version ${END_ROLLUP_IT} \n"
@@ -295,4 +305,23 @@ function prepareSSH_SM_RUI() {
     sed -i "0,/.*PubkeyAuthentication.*$/ s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" $daemon_cfg
 }
 
+function setUp_tftp_hpa_SM_RUI() {
+    local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+    printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+    installPkg_COMMON_RUI "tftpd-hpa" "" ""
+    TFTP_DATA_DIR_RUI=${TFTP_DATA_DIR_RUI:-"/var/tftp-hpa/srv_data"}
+
+    if [[ ! -d $TFTP_DATA_DIR_RUI ]]; then
+        mkdir -p $TFTP_DATA_DIR_RUI
+        chown -Rf tftp:tftp "$TFTP_DATA_DIR_RUI"
+    fi 
+
+    printf 'TFTP_USERNAME=\"tftp\"
+TFTP_DIRECTORY=\"/srv/tftp\"
+TFTP_ADDRESS=\"0.0.0.0:69\"
+TFTP_OPTIONS=\"-l -c -s"' > /etc/default/tftpd-hpa
+
+    printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
+}
 

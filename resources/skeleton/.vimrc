@@ -11,3 +11,7 @@ set tabstop=4
 set shiftwidth=4
 set expandtab
 :highlight Constant term=underline ctermfg=2 gui=bold guifg=darkkhaki 
+
+nnoremap <leader>cd :cd %:p:h<CR>:pwd<CR>
+
+set statusline+=%F

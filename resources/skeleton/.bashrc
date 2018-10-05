@@ -55,11 +55,15 @@ if [ -n "$force_color_prompt" ]; then
 	color_prompt=
     fi
 fi
+# color PS1
+PS1_TIME='\[\e[1;36m\]\t\e[1;37m]'
+PS1_USER='\[\033[01;32m\]\u@\h\[\033[00m\]'
+PS1_PATH='\[\033[01;34m\]\W\[\033[00m\]\'
 
 if [ "$color_prompt" = yes ]; then
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+    PS1='${debian_chroot:+($debian_chroot)${PS1_TIME} ${PS1_USER}:${PS1_PATH}'
 else
-    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+    PS1='${debian_chroot:+($debian_chroot)}\t \u@\h:\W\$ '
 fi
 unset color_prompt force_color_prompt
 
@@ -75,7 +79,7 @@ esac
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
-    alias ls='ls --color=auto -lat'
+    alias ls='ls --color=auto -lat --block-size=M'
     #alias dir='dir --color=auto'
     #alias vdir='vdir --color=auto'
 
@@ -112,3 +116,9 @@ if ! shopt -oq posix; then
   fi
 fi
 
+TMUX_CFG_PATH=~/
+if [[ -x /usr/bin/tmux ]]; then
+    $TMUX_CFG_PATH/start_tmux.sh 1>$TMUX_CFG_PATH/stdout.tmux.log 2>$TMUX_CFG_PATH/stderr.tmux.log
+else
+    echo "Warrning: No tmux has been installed" > $TMUX_CFG_PATH/stderr.tmux.log
+fi 
