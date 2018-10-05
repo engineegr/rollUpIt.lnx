@@ -49,14 +49,13 @@ function prepare_PRSD_ISO() {
     local -r rollUpIt_src_path="$2"
     local -r iso_fp="$3"
     local -r user_name="$4"
-    local -r platform=${5:-"amd"}
 
-    mkdir -p $root_dir_path/MOUNT-ISO $root_dir_path/SRC $root_dir_path/DST-ISO $root_dir_path/SRC/post/install.$platform 2>/dev/null 
+    mkdir -p $root_dir_path/MOUNT-ISO $root_dir_path/SRC $root_dir_path/DST-ISO $root_dir_path/SRC/post_install 2>/dev/null 
 
     mount -o loop $iso_fp $root_dir_path/MOUNT-ISO
     find $root_dir_path/MOUNT-ISO -mindepth 1 -maxdepth 1 -exec cp -Rf {} $root_dir_path/SRC/ \;
 
-    cp -Rf $rollUpIt_src_path $root_dir_path/SRC/post/install.$platform
+    cp -Rf $rollUpIt_src_path $root_dir_path/SRC/post_install
 
     umount $root_dir_path/MOUNT-ISO
     chown -Rf "$user_name":"$user_name" $root_dir_path
