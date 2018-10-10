@@ -21,10 +21,11 @@ function main() {
 declare -r local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
 printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-# initial_cfg_MYSQL_RUI
+initial_cfg_MYSQL_RUI
 create_db_FREERADIUS_RUI
+create_schema_FREERADIUS_RUI
 
-printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
 main $@ 

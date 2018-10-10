@@ -22,3 +22,17 @@ MYSQL_INPUT
 
 printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }
+
+function create_schema_FREERADIUS_RUI() {
+declare -r local debug_prefix="debug: [0] [$FUNCNAME[0] ] : "
+printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+    
+    declare -r local fradius_username="fradius_user"
+    declare -r lcoal fradius_db="fradius_db"
+    local fradius_user_pwd="nopassword"
+    declare -r local schema_path="$MYSQL_MODSCFG_DIR/schema.sql"
+
+    mysql $fradius_db -u$fradius_username -p < $schema_path
+
+printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
+}
