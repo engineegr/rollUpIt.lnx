@@ -10,6 +10,7 @@ set -o nounset
 #
 # arg0 - username
 # arg1 - password
+# arg2 - install default pckges (yes|no_def_install)
 #
 function rollUpIt_SM_RUI()
 {
@@ -17,6 +18,9 @@ local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
 printf "$debug_prefix enter the function \n"
 printf "$debug_prefix [$1] parameter #1 \n"
 printf "$debug_prefix [$2] parameter #2 \n"
+
+declare -r local installDefPkgs="${3:-"no_def_install"}"
+printf "$debug_prefix [$installDefPkgs] parameter #3 \n"
 
 if [[ -z "$1" || -z "$2" ]]; then
 	printf "${RED_ROLLUP_IT} $debug_prefix Error: No parameters passed into the function ${END_ROLLUP_IT}\n"
@@ -28,7 +32,9 @@ declare -i local debian_version="$(find /etc/ -type f -name debian_version | xar
 if [[ -n "$debian_version" && "$debian_version" -ge 8 ]]; then	
 	printf "$debug_prefix Debian version is $debian_version\n"
 	prepareSkel_SM_RUI
-	installDefPkgSuit_SM_RUI
+    if [[ "$installDefPkgs" == "yes_def_install" ]]; then
+	    installDefPkgSuit_SM_RUI
+    fi
 
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
 	if [[ -z "$isExist" ]]; then
@@ -36,17 +42,44 @@ if [[ -n "$debian_version" && "$debian_version" -ge 8 ]]; then
 	    createAdmUser_SM_RUI $1 $2
     else
 		printf "$debug_prefix The user exists. Copy skel config \n"
-        rsync -rtvu "$SKEL_DIR_ROLL_UP_IT/" "/home/$1"
-        chown -Rf "$1:$1" "/home/$1"
+        skeletonUserHome $1
 	fi
 
-	prepareSudoersd_SM_RUI $1
+    if [[ ! "$1"="root" ]]; then
+	    prepareSudoersd_SM_RUI $1
+    fi
+
     setLocale_SM_RUI "ru_RU.UTF-8 UTF-8"
     prepareSSH_SM_RUI
 else
 	printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't run scripts there is no a suitable distibutive version ${END_ROLLUP_IT} \n"
     exit 1
 fi
+}
+
+#
+# arg0 - username
+#
+function skeletonUserHome() {
+local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+printf "$debug_prefix enter the function \n"
+printf "$debug_prefix [$1] parameter #1 \n"
+
+    declare -r local username="$1"
+    declare -r local isExist="$(getent shadow | cut -d : -f1 | grep $username)"
+	
+    if [[ -z "$isExist" ]]; then
+		onErrors "$debug_prefix The user doesn't exist"
+        exit 1
+    fi
+
+    local user_home_dir="/home/$username"
+    if [[ "$username"="root" ]]; then
+        user_home_dir="/root"
+    fi
+
+    rsync -rtvu "$SKEL_DIR_ROLL_UP_IT/" "$user_home_dir"
+    chown -Rf "$username:$username" "$user_home_dir"
 }
 
 #
@@ -81,6 +114,7 @@ printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 #
 function onErrors_SM_RUI() {
         declare -r local err_msg=$([[ -z "$1" ]] && echo "ERROR!!!" || echo "$1")
+        local errs=""
         if [[ -e stream_error.log ]]; then
             errs="$(cat stream_error.log)"
         fi
@@ -225,7 +259,7 @@ fi
 function installDefPkgSuit_SM_RUI()
 {
 local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-declare -r local pkg_list=('sudo' 'tmux' 'vim' 'nethogs' 'git' 'tcpdump') 
+declare -r local pkg_list=('sudo' 'tmux' 'vim' 'git' 'tcpdump') 
 local res=""
 local errs=""
 

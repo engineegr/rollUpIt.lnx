@@ -7,7 +7,7 @@ set -o nounset
 
 exec 2>stderr.log
 
-ROOT_DIR_ROLL_UP_IT="/home/likhobabin_im/Workspace/Sys/rollUpIt.lnx"
+ROOT_DIR_ROLL_UP_IT="/home/likhobabinim/Workspace/Sys/rollUpIt.lnx"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addVars.sh"
@@ -19,7 +19,7 @@ function main() {
 local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
 printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
     
-    declare -r local user_name="likhobabin_im"
+    declare -r local user_name="likhobabinim"
     declare -r local root_dir="/home/$user_name/Workspace/Sys/tests/d-i"
     declare -r local rollUpIt_lnx_path="/home/$user_name/Workspace/Sys/rollUpIt.lnx"
     declare -r local src_iso_fp="$root_dir/SRC-ISO/debian-9.5.0-amd64-netinst.iso"
