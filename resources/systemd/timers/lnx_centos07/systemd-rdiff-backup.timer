@@ -1,0 +1,22 @@
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Everyweek backup: home and etc folders with use of rdiff-backup
+
+[Timer]
+# make backup on 7th minuite after the next systemd start ONCELY
+OnStartupSec=7min
+# make backup weekly 
+OnUnitActiveSec=1w
+# to avoid run several timers simultaneoulsy
+AccuracySec=1s
+# We can use Calendar to specify an accurate time period: On Monday at 18:00 every week
+# Calendar=Mon *-*-* 18:00:00
+
+[Install]
+WantedBy=multi-user.target

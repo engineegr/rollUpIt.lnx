@@ -7,7 +7,7 @@ set -o nounset
 ROOT_DIR_ROLL_UP_IT="/home/likhobabinim/Workspace/post/install.386/rollUpIt.lnx"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/addVars.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/addVars.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
 

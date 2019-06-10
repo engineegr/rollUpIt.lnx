@@ -7,11 +7,11 @@ set -o xtrace
 #exec 1>stdout.log 
 exec 2>stderr.log
 
-source ../../libs/addColors.sh
-source ../../libs/addVars.sh
-source ../../libs/lnx_debian09/commons.sh
-source ../../libs/lnx_debian09/sm.sh
-source ../../libs/lnx_debian09/configFirewall.sh
+source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/addVars.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/configFirewall.sh"
 
 # 1
 # test configFirewall.sh

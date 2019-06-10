@@ -9,7 +9,7 @@ FREERADIUS_ROOT_DIR="/etc/freeradius/3.0"
 MYSQL_MODSCFG_DIR="$FREERADIUS_ROOT_DIR/mods-config/sql/main/mysql"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/addVars.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/addVars.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/mysql/cfg_mysql.sh"
