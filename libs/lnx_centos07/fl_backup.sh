@@ -226,7 +226,6 @@ checkDir_FLBACKUP_RUI() {
 #: arg2 - dst dir
 #: arg3 - log dir
 #: arg4 - globbing file
-#: arg5 - clean older than
 #:
 #: To restore
 #: rdiff-backup --restore-as-of [1M 1W 1D 1H 1m] backup-dir dst-dir
@@ -236,7 +235,7 @@ checkDir_FLBACKUP_RUI() {
 #: rdiff-backup -l backup-dir
 #:
 doBackup_FLBACKUP_RUI() {
-  declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
   local rc=255
 
@@ -251,7 +250,6 @@ doBackup_FLBACKUP_RUI() {
   local dst_path="$dst_dir"
   local -r log_dir="$3"
   local -r glob_fl="$4"
-  local -r older_than="$5"
   local isRemote="false"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} Atguments:\n\t"
@@ -260,7 +258,6 @@ doBackup_FLBACKUP_RUI() {
   printf "$debug_prefix dst_dir[$dst_dir]\n"
   printf "$debug_prefix log_dir[$log_dir]\n"
   printf "$debug_prefix glob_fl[$glob_fl]\n"
-  printf "$debug_prefix older_than[$older_than]\n"
 
   printf "${END_ROLLUP_IT} \n"
 
@@ -287,7 +284,6 @@ doBackup_FLBACKUP_RUI() {
   fi
 
   local dst_name=""
-  local src_parent=""
 
   if [[ -n "$(echo "$src_path" | grep -P "^~\/?$")" ]]; then
     if [[ -n "$(echo "$src_path" | grep -P "^~$")" ]]; then
@@ -299,21 +295,17 @@ doBackup_FLBACKUP_RUI() {
     dst_name="$(echo "$src_path" | sed -E "s/([[:alnum:]\.\-\_\~\/\*]+)\/([[:alnum:]\-\_\~\*]+)\/?/\2/")"
   fi
 
-  src_parent="$(echo "$src_path" | sed -E "s/([[:alnum:]\.\-\_\~\/\*]+)\/([[:alnum:]\-\_\~\*]+)\/?/\1/")"
-
   printf "$debug_prefix ${RED_ROLLUP_IT} dst_name [$dst_name] ${END_ROLLUP_IT} \n"
-  printf "$debug_prefix ${RED_ROLLUP_IT} src_parent [$src_parent] ${END_ROLLUP_IT} \n"
   printf "$debug_prefix ${RED_ROLLUP_IT} dst_path [$dst_path] ${END_ROLLUP_IT} \n"
   printf "$debug_prefix ${RED_ROLLUP_IT} src_path [$src_path] ${END_ROLLUP_IT} \n"
 
   if [ -n "$glob_fl" ]; then
-    rdiff-backup -v5 --print-statistics --create-full-path --exclude-special-files \
-      --include "$src_dir" --include-globbing-filelist "$glob_fl" --exclude '**' "$src_parent" "$dst_dir" 2>&1 |
-      tee "${log_dir}/bck_$(date +%H%M_%Y%m%d)_${dst_name}_rdiff_backup.log"
+    printf "$debug_prefix ${RED_ROLLUP_IT} glob_fl [$glob_fl] ${END_ROLLUP_IT} \n"
+    rdiff-backup -v5 --print-statistics --force --create-full-path \
+      --exclude-globbing-filelist "$glob_fl" "$src_dir" "$dst_dir" \
+      2>&1 | tee "${log_dir}/bck_$(date +%H%M_%Y%m%d)_${dst_name}_rdiff_backup.log"
   else
-    rdiff-backup -v5 --print-statistics --create-full-path --exclude-special-files \
-      --include "$src_dir" --exclude '**' "$src_parent" "$dst_dir" 2>&1 |
-      tee "${log_dir}/bck_$(date +%H%M_%Y%m%d)_${dst_name}_rdiff_backup.log"
+    rdiff-backup -v5 --print-statistics --force --create-full-path --exclude-special-files "$src_dir" "$dst_dir" 2>&1 | tee "${log_dir}/bck_$(date +%H%M_%Y%m%d)_${dst_name}_rdiff_backup.log"
   fi
 
   rc=$?
@@ -323,15 +315,6 @@ doBackup_FLBACKUP_RUI() {
     return $rc
   fi
 
-  if [ -n "$older_than" ]; then
-    rdiff-backup --remove-older-than "$older_than" "$dst_dir" 2>&1 | tee "$log_dir/rm_oldbck_$(date +%H%M_%Y%m%d)_${dst_name}.rdiff_backup.log"
-    rc=$?
-    if [ $rc -ne 0 ]; then
-      printf "$debug_prefix ${RED_ROLLUP_IT} Error: Can't make cleaning up the old backup; older than [$older_than] ${END_ROLLUP_IT} \n"
-      return $rc
-    fi
-  fi
-
   printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT}\n"
   rc=$?
 
@@ -339,80 +322,82 @@ doBackup_FLBACKUP_RUI() {
 }
 
 #:
-#: Make etc backup
+#: Clean up a backup dir
 #:
-#: arg1 - backup root dir
-#: arg2 - globbing file
-#: arg3 - isRemote
+#: arg1 - src dir
+#: arg2 - clean older than
+#: arg3 - log dir
+#: arg4 - globbing file
 #:
-sysbackup_FLBACKUP_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+#: To restore
+#: rdiff-backup --restore-as-of [1M 1W 1D 1H 1m] backup-dir dst-dir
+#: To restore from increment file
+#: rdiff-backup bakup_dir://rdiff-data-backups/increments/file.diff.gz dst/file
+#: To list version (increments)
+#: rdiff-backup -l backup-dir
+#:
+doCleanup_FLBACKUP_RUI() {
+  declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  local rc=255
 
-  local -r backup_root="${1:-"/home/likhobabin_im/backup/$(hostname)"}"
-  local -r is_remote="${3:-"false"}"
-
-  local -r glbb_file="${2:-"$ROOT_DIR_ROLL_UP_IT/resources/rdiff-backup/glbb_list_001"}"
-  local rc=0
-  local -r etc_dir="/etc"
-  local -r dst_dir="$backup_root/etc_bck"
-  local -r backup_logs="$HOME/rui/logs/rdiff-backup/$(hostname)/etc_bck"
-
-  if [ ! -e "$backup_logs" ]; then
-    mkdir -p "$backup_logs"
-  fi
-
-  # make backup of etc
-  doBackup_FLBACKUP_RUI "$etc_dir" "$dst_dir" "$backup_logs" "$glbb_file" "1M"
-  rc=$?
-  if [ $rc -gt 0 ]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Can't create backup of [$etc_dir]; [$rc] error code \n"
+  if [[ -z "$1" || -z "$2" || -z "$3" ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: NULL arguments ${END_ROLLUP_IT} \n"
     return $rc
   fi
 
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-  return $?
-}
+  local src_dir="$1"
+  local -r older_than="$2"
+  local -r log_dir="$3"
+  local isRemote="false"
 
-#:
-#: Make an user's home dir backup
-#:
-#: arg1 - backup root dir
-#: arg2 - glbb file list
-#: arg3 - user name
-#: arg4 - isRemote
-#:
-userbackup_FLBACKUP_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Atguments:\n\t"
 
-  local -r backup_root="${1:-"/home/likhobabin_im/backup/$(hostname)"}"
-  local -r glbb_file="${2:-"$ROOT_DIR_ROLL_UP_IT/resources/rdiff-backup/glbb_list_001"}"
-  local -r is_remote="${4:-"false"}"
+  printf "$debug_prefix src_dir[$src_dir]\n"
+  printf "$debug_prefix older_than[$older_than]\n"
+  printf "$debug_prefix log_dir[$log_dir]\n"
 
-  local -r user_name="$3"
-  if [ -z "$user_name" ]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Usage: specify parameter 2 [username]\n"
-    return 254
+  printf "${END_ROLLUP_IT} \n"
+
+  checkDir_FLBACKUP_RUI $src_dir isRemote
+  if [[ "$isRemote" == "true" ]]; then
+    src_dir="${src_dir/:/::}"
   fi
 
-  local rc=0
-  local -r home_dir="/home/$user_name"
-  local -r dst_dir="$backup_root/${user_name}_home_bck"
-  local -r backup_logs="$HOME/rui/logs/rdiff-backup/$(hostname)/${user_name}_home_bck"
-
-  if [ ! -e "$backup_logs" ]; then
-    mkdir -p "$backup_logs"
-  fi
-
-  # make backup of etc
-  doBackup_FLBACKUP_RUI "$home_dir" "$dst_dir" "$backup_logs" "$glbb_file" "1M"
-  rc=$?
-  if [ $rc -gt 0 ]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Can't create backup of [$etc_dir]; [$rc] error code \n"
+  if [ ! -e "$log_dir" ]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: There is no [$log_dir] log dir ${END_ROLLUP_IT} \n"
     return $rc
   fi
 
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-  return $?
+  if [[ -n "$glob_fl" && ! -e "$glob_fl" ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: There is no [$glob_fl] globbing file ${END_ROLLUP_IT} \n"
+    return $rc
+  fi
+
+  local src_name=""
+
+  if [[ -n "$(echo "$src_path" | grep -P "^~\/?$")" ]]; then
+    if [[ -n "$(echo "$src_path" | grep -P "^~$")" ]]; then
+      src_name="root"
+    else
+      src_name="home"
+    fi
+  else
+    src_name="$(echo "$src_path" | sed -E "s/([[:alnum:]\.\-\_\~\/\*]+)\/([[:alnum:]\-\_\~\*]+)\/?/\2/")"
+  fi
+
+  printf "$debug_prefix ${RED_ROLLUP_IT} src_dir [$src_dir] ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${RED_ROLLUP_IT} src_name [$src_name] ${END_ROLLUP_IT} \n"
+
+  rdiff-backup --remove-older-than "$older_than" "$src_dir" 2>&1 | tee "$log_dir/rm_oldbck_$(date +%H%M_%Y%m%d)_${src_name}.rdiff_backup.log"
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Can't make cleaning up the old backup; older than [$older_than] ${END_ROLLUP_IT} \n"
+    return $rc
+  fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT}\n"
+  rc=$?
+
+  return $rc
 }
