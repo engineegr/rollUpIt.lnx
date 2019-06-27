@@ -23,7 +23,7 @@ To establish session BGP peers go through a range of state:
 
 - **Idle**: no TCP connection established 
 
-- **Connect**: Establish TCP connection, so that the originating router (**OR**) tries to establish 3-handshake TCP connection during **ConnectRetryTimer**. If the timer depletes and no TCP connection is established the **OR** resets the timer and tries to complete a new TCP connection but in that case the OR goes to the **Active** state. Otherwise it send OpenSent message and transitions to **OpenSent** State.
+- **Connect**: Establish TCP connection, so that the originating router (**OR**) tries to establish 3-handshake TCP connection during **ConnectRetryTimer**. If the timer depletes and no TCP connection is established the **OR** resets the timer and tries to complete a new TCP connection but in that case the OR goes to the **Active** state. Otherwise it send OpenMessage and transitions to **OpenSent** State.
 
 - **Active**: In this state, BGP starts a new 3-way TCP handshake. If a connection is established, an **Open message** is sent, the **Hold Timer** is set to 4 minutes, and the state moves to **OpenSent**. If this attempt for TCP connection fails, the state moves back to the **Connect state** and resets the **ConnectRetryTimer**.
 

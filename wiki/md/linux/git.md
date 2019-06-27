@@ -65,6 +65,16 @@
     
     6. To delete a remote branch: `git push origin :develop`
 
+5. ##### How to fetch a specific folder only?
+
+What you want to do, is fetch the remote branch, and from that, extract the dir/file you need.
+
+```
+$ git fetch <remote> <branch>
+$ git checkout <remote>/<branch> -- relative/path/to/file/or/dir
+the file/dir should now be in your branch and added to the index.
+```
+
 >[!Links]
 > 1. [Remote branches](https://git-scm.com/book/en/v1/Git-Branching-Remote-Branches)
 > 2. [Basic](https://www.liquidlight.co.uk/blog/git-for-beginners-an-overview-and-basic-workflow/)

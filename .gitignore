@@ -3,4 +3,4 @@
 *.swp
 *.private
 *.key
-
+.DS_Store

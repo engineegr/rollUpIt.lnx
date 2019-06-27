@@ -26,13 +26,15 @@
 
   - Setting traffic priorities across the network
 
-2. ##### Packet classification 
+2. ##### QoS methods 
 
 The basis for providing any QoS lies in the ability of a network device to identify and group specific packets. This identification process is called packet classification. After a packet has been classified, the packet needs to be marked by setting designated bits in the IP header. 
 
 There are two methods of classification:
 
-- *Static*. Identify the traffic based on L2,L3 header fields or L4 destionation port of UDP. The method includes: 
+- No QoS mechanism implemented - it is a default technique used in the Internet and is called as **Best Effort**.
+
+- *Static* or Differentiated Service or Soft QoS. Identify the traffic based on L2,L3 header fields or L4 destionation port of UDP. The method includes: 
 
   **TypeOfService** - IP header field - 8 bits (DiffServ CP - 6 bits and ECN - 2 bits) where ECN is:
 
@@ -71,7 +73,7 @@ There are two methods of classification:
   
   5. One ATM cell loss probability (CLP) bit
 
-- *Dynamic*. It uses **Resource Reservation Protocol** that looks for signaling packets (H.245) to determine which UDP port the voice conversation will use.It then sets up dynamic access lists to identify VoIP traffic and places the traffic into a reserved queue.
+- *Dynamic* or **Intergrated Service** or **Hard QoS**. It uses **Resource Reservation Protocol** that looks for signaling packets (H.245) to determine which UDP port the voice conversation will use. It then sets up dynamic access lists to identify VoIP traffic and places the traffic into a reserved queue.
 
 3. ##### Marking methods
 
@@ -86,8 +88,8 @@ There are two methods of classification:
 
   2. Committed Access Rate 
 
-  CAR supports most of the matching mechanisms and allows IP Precedence or DSCP bits to be set differently depending on whether packets conform to or exceed a specified rate.
-  In general, CAR is more useful for data packets than for voice packets. For example, all data traffic coming in on an Ethernet interface at less than 1 Mbps can be placed into IP Precedence Class 3, and any traffic exceeding the 1 Mbps rate can go into Class 1 or be dropped. 
+  **CAR** supports most of the matching mechanisms and allows IP Precedence or DSCP bits to be set differently depending on whether packets conform to or exceed a specified rate.
+  In general, CAR is more useful for data packets than for voice packets. For example, all data traffic coming in on an Ethernet interface at less than 1 Mbps can be placed into IP Precedence Class 3, and any traffic exceeding the 1 Mbps rate can go into Class 1 or be dropped so that **CAR policies traffic based on its bandwidth allocation.**
   Other nodes in the network can then treat the exceeding or nonconforming traffic marked with lower IP Precedence differently. All voice traffic should conform to the specified rate if it has been provisioned correctly.
     
     ```
@@ -274,7 +276,7 @@ interface Serial1/0
 
 6. ##### DiffServ CP
 
-The first architectural approach to providing end-to-end QoS required that the application signal its QoS resource requirements (such as bandwidth and guaranteed delay) to the network. In a VoIP scenario, this architectural approach meant that either the IP telephone or voice gateway needed to make QoS requests to every hop in the network so that end-to-end resources would be allocated. Every hop needed to maintain call state information to determine when to release the QoS resources for other calls and applications, and if enough resources were available, to accept calls with QoS guarantees. This method is called the Integrated Services QoS model. The most common implementation of Integrated Services uses **Resource Reservation Protocol (RSVP)**. RSVP has some advantages, such as **Call Admission Control (CAC)**, where a call can be rerouted by sending an appropriate signal to the originator if the network does not have the QoS resources available to support it. However, RSVP also suffers from some scalability issues; RSVP and those issues are discussed later in this document.
+The second architectural approach to providing end-to-end QoS required that the application signal its QoS resource requirements (such as bandwidth and guaranteed delay) to the network. In a VoIP scenario, this architectural approach meant that either the IP telephone or voice gateway needed to make QoS requests to every hop in the network so that end-to-end resources would be allocated. Every hop needed to maintain call state information to determine when to release the QoS resources for other calls and applications, and if enough resources were available, to accept calls with QoS guarantees. This method is called the Integrated Services QoS model. The most common implementation of Integrated Services uses **Resource Reservation Protocol (RSVP)**. RSVP has some advantages, such as **Call Admission Control (CAC)**, where a call can be rerouted by sending an appropriate signal to the originator if the network does not have the QoS resources available to support it. However, RSVP also suffers from some scalability issues; RSVP and those issues are discussed later in this document.
 
 The DS architecture is the most widely deployed and supported QoS model today. It provides a scalable mechanism to classify packets into groups or classes that have similar QoS requirements and then gives these groups the required treatment at every hop in the network. The scalability comes from the fact that packets are classified at the edges of the DS "cloud" or region and marked appropriately so that the core routers in the cloud can provide QoS based simply on the DS class. The six most significant bits of the IP Type of Service (ToS) byte are used to specify the DS class; the Differentiated Services Code Point (DSCP) defines these six bits. The first 3 bits of DiffServ CP are used for compatibility with IP Precedence.
 
@@ -293,7 +295,10 @@ The DS architecture is the most widely deployed and supported QoS model today. I
 
 The second 3 bits define the drop probability: so that EF46 consist of EF class and high drop probability. If congestion were to occur in the DS cloud, the first packets to be dropped would be the **"high drop preference"** packets.
 
-The DS architecture defines a set of traffic conditioners that are used to limit traffic into a DS region and place it into appropriate DS classes. Meters, markers, shapers, and droppers are all traffic conditioners. Meters basically are policers, and class-based policing (which you configure using the police policy-map configuration command under a class in Modular QoS CLI) is a DS-compliant implementation of a meter. You can use class-based marking to set the DSCP and class-based shaping as the shaper. Weighted Random Early Detect (WRED) is a dropper mechanism that is supported, but you should not invoke WRED on the VoIP class. Per hop behavior (PHB) describes what a DS class should experience in terms of loss, delay, and jitter. A PHB determines how bandwidth is allocated, how traffic is restricted, and how packets are dropped during congestion.
+The DS architecture defines a set of traffic conditioners that are used to limit traffic into a DS region and place it into appropriate DS classes. Meters, markers, shapers, and droppers are all traffic conditioners. Meters basically are policers, and class-based policing (which you configure using the police policy-map configuration command under a class in Modular QoS CLI) is a DS-compliant implementation of a meter. You can use class-based marking to set the DSCP and class-based shaping as the shaper. Weighted Random Early Detect (WRED) is a dropper mechanism that is supported, but you should not invoke WRED on the VoIP class.
+
+DiffServ allows end devices or hosts to classify packets into different treatment categories or Traffic Classes (TC), each of which will receive a different **Per-Hop-Behaviour** (PHB) at each hop from the source to the destination. Each network device on the path treats packets according to the locally defined PHB. So that PHB defines how a node deals with a TC.
+As a result **Per hop behavior** (PHB) describes what a DS class should experience in terms of loss, delay, and jitter. A PHB determines how bandwidth is allocated, how traffic is restricted, and how packets are dropped during congestion.
 
 The Assured Forwarding (AF) standard specifies four guaranteed bandwidth classes and describes the treatment each should receive. It also specifies drop preference levels, resulting in a total of 12 possible AF classes.
 
