@@ -7,9 +7,22 @@
 
 [Unit]
 Description=Make backup via rdiff-backup weekly
-Before=shutdown.target
+After=ntpd.service
 
 [Service]
-# this is useful for scripts that do a single job and then exit
+# We are sure that the next job  won't be started untill the service is forked and exits unless systemctl will report failure.
 Type=oneshot
-ExecStart=/usr/local/src/rollUpIt.lnx/tests/lnx_centos07/test_flbackup.sh
+
+# run on behalf of the User, run ONLY ExecStart= command (see man systemd.service)
+PermissionsStartOnly=true
+User=likhobabin_im
+
+# poll ntp-server forcely 
+# ExecStartPre=/usr/bin/systemctl stop ntpd
+# ExecStartPre=/usr/sbin/ntpd -gq
+# ExecStartPre=/usr/bin/systemctl start ntpd
+# ExecStart=/usr/local/src/rollUpIt.lnx/libs/lnx_centos07/utils/fbck.sh -s /home/likhobabin_im/Workspace/Sys/fbck/tests/tmp001/ -d "likhobabin_im@10.0.2.2:/Users/likhobabin_im/Workspace/backup/VirtualBox/Vms/fw001/likhobabin_im_home_bck/"
+ExecStart=/usr/local/src/rollUpIt.lnx/libs/lnx_centos07/utils/fbck.sh -s /home/likhobabin_im/ -d "likhobabin_im@10.0.2.2:/Users/likhobabin_im/Workspace/backup/VirtualBox/Vms/fw001/likhobabin_im_home_bck/"
+
+[Install]
+WantedBy=multi-user.target

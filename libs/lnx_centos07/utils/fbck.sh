@@ -4,7 +4,7 @@
 set -o nounset
 set -o errtrace
 
-ROOT_DIR_ROLL_UP_IT="/home/likhobabin_im/Workspace/Sys/projects/rollUpIt.lnx"
+ROOT_DIR_ROLL_UP_IT="/usr/local/src/rollUpIt.lnx"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh"
@@ -43,7 +43,7 @@ loop_FLBACKUP_RUI() {
 
   local src_dir=""
   local dst_dir=""
-  local log_dir="$HOME/rui/logs/rdiff-backup/$(hostname)/$(whoami)_home_bck"
+  local log_dir="$ROOT_DIR_ROLL_UP_IT/logs/rdiff-backup/$(hostname)/$(whoami)_home_bck"
   local glbb_fl="$ROOT_DIR_ROLL_UP_IT/resources/rdiff-backup/glbb_list_001"
   local isRemote="false"
 
@@ -90,8 +90,7 @@ loop_FLBACKUP_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} Info: Passed the following glbb_fl [option $glbb_fl] ${END_ROLLUP_IT}\n"
   printf "$debug_prefix ${GRN_ROLLUP_IT} Info: Passed the following log_dir [option $log_dir] ${END_ROLLUP_IT}\n"
 
-  doBackup_FLBACKUP_RUI "$src_dir" "$dst_dir" "$log_dir" "$glbb_fl" ""
-
+  doBackup_FLBACKUP_RUI "$src_dir" "$dst_dir" "$log_dir" "$glbb_fl"
   printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
   return $?
 }
@@ -100,11 +99,7 @@ main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  loop_FLBACKUP_RUI -s ~/Workspace/Sys/fbck/tests/tmp001 -d "likhobabin_im@10.0.2.2:/Users/likhobabin_im/Workspace/backup/VirtualBox/Vms/fw001/test/"
-  # loop_FLBACKUP_RUI -s / -d "likhobabin_im@10.0.2.2:/Users/likhobabin_im/Workspace/backup/VirtualBox/Vms/fw001/test/"
-  #  loop_FLBACKUP_RUI -s / -d ~
-  # loop_FLBACKUP_RUI -s ~/Workspace/Sys/ -d likhobabin_im@10.0.2.2:/Users/likhobabin_im/Workspace/backup/VirtualBox/Vms/fw001/test/
-  # checkregexp_flbackup_rui "tests/lnx_centos07/reg_test.txt"
+  loop_FLBACKUP_RUI $@
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
   return $?
