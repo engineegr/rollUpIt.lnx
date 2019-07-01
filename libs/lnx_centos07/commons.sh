@@ -103,6 +103,67 @@ installPkg_COMMON_RUI() {
     fi
 }
 
+#
+# arg1 - verifying variable
+#
+checkIfType() {
+  local var=$( declare -p $1 )
+  local reg='^declare -n [^=]+=\"([^\"]+)\"$'
+  while [[ $var =~ $reg ]]; do
+    var=$( declare -p ${BASH_REMATCH[1]} )
+  done
+
+  case "${var#declare -}" in
+  a*)
+   echo "ARRAY"
+   ;;
+  A*)
+   echo "HASH"
+   ;;
+  i*)
+   echo "INT"
+   ;;
+  x*)
+   echo "EXPORT"
+   ;;
+  *)
+   echo "OTHER"
+   ;;
+  esac
+}
+
+#
+# arg1 - package list
+# arg2 - quiet or not 
+#
+installPkgList_COMMON_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local rc=0
+  local isQuiet="${2:-}"
+
+  if [ -z $1 ]; then
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: Empty requried params passed ${END_ROLLUP_IT} \n"
+    rc=255
+    exit $rc;
+  fi
+  
+  if [ -z "$(checkIfType $1 | egrep "ARRAY")" ]; then
+     printf "${RED_ROLLUP_IT} $debug_prefix Error: Passsed package list  is not ARRAY ${END_ROLLUP_IT} \n"
+    rc=255
+    exit $rc;
+  fi  
+ 
+  declare -a __pkg_list=$1[@]
+
+  for i in "${!__pkg_list}"; do
+    printf "$debug_prefix ${GRN_ROLLUP_IT} Info install pkg [$i] ${END_ROLLUP_IT}\n"
+    installPkg_COMMON_RUI "$i" "$isQuiet"
+  done
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  return $?
+}
+
 # 
 # pf - processing file
 # sf - search field
