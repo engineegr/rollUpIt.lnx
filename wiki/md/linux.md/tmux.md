@@ -43,7 +43,39 @@ The swap-pane command can do this for you. The `{` and `}` keys are bound to *sw
 So, to effect your desired change, you can probably use Prefix `{` when you are in the right pane (or Prefix `}` if you are in the left pane).
 
 The -U and -D refer to “up” and “down” in the pane index order (“up” is the same direction that Prefix o moves across panes). You can see the pane indices with display-panes (*Prefix q*, by default).
-                
+
+5. #### [Install in CentOS 7](https://gist.github.com/suhlig/c8b8d70d33462a95d2b0307df5e40d64) : 2.7 version
+
+```
+# Install tmux on rhel/centos 7
+
+# install deps
+yum install gcc kernel-devel make ncurses-devel
+
+# DOWNLOAD SOURCES FOR LIBEVENT AND MAKE AND INSTALL
+curl -OL https://github.com/libevent/libevent/releases/download/release-2.1.8-stable/libevent-2.1.8-stable.tar.gz
+tar -xvzf libevent-2.1.8-stable.tar.gz
+cd libevent-2.1.8-stable
+./configure --prefix=/usr/local
+make
+sudo make install
+cd ..
+
+# DOWNLOAD SOURCES FOR TMUX AND MAKE AND INSTALL
+curl -OL https://github.com/tmux/tmux/releases/download/2.7/tmux-2.7.tar.gz
+tar -xvzf tmux-2.7.tar.gz
+cd tmux-2.7
+LDFLAGS="-L/usr/local/lib -Wl,-rpath=/usr/local/lib" ./configure --prefix=/usr/local
+make
+sudo make install
+cd ..
+
+# pkill tmux
+# close your terminal window (flushes cached tmux executable)
+# open new shell and check tmux version
+tmux -V
+```
+
 
 
     

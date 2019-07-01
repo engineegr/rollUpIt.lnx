@@ -268,9 +268,23 @@
 			    --enable-cscope \
 			    --enable-fail-if-missing \ 
 
-	+ Install an appropriate format util: https://github.com/Chiel92/vim-autoformat
+	+ Install an appropriate format util: https://github.com/Chiel92/vim-autoformat. 
+	We must have **golang**, to install run:
+
+	```
+	#!/bin/bash
+
+	wget https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz
+	sudo tar -zxvf go1.12.6.linux-amd64.tar.gz -C /usr/local
+	echo 'export GOROOT=/usr/local/go' | sudo tee -a /etc/profile
+	echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee -a /etc/profile
+
+	source /etc/profile
+	```
 
 	2. Use the plugin: `Plugin 'Chiel92/vim-autoformat'` from [here](https://github.com/Chiel92/vim-autoformat): 
+	
+	`cd $(mktemp -d); go mod init tmp; go get mvdan.cc/sh/v3/cmd/shfmt`
 
 	+ Add the following to *.vimrc*:
 
@@ -284,6 +298,29 @@
 			let g:formatdef_my_custom_sh = '"shfmt -i 2 -ci"'
 			let g:formatters_sh = ['my_custom_sh']
 			au BufReadPost,BufNewFile,BufWrite *.sh :Autoformat
+
+10. ##### Compile vim with python2.6/3.6: known bugs
+
+	10.1 **checking if compile and link flags for Python are sane... no: PYTHON DISABLED**
+
+	The same error concerns the **ruby** check
+
+	```
+	yum install python-devel python3.6u-devel ruby-devel
+	```
+
+	10.2 **checking for tgetent()... configure: error: NOT FOUND!**
+
+	- add --with-tlib=ncurses
+	- `yum install ncurses-devel`
+
+11. ##### Work with vim-Explorer
+
+11.1 Copy a file:
+- mark the destination dir: point to '.'(current dir), and press `mt`;
+- mark the destination file: `mf` (`mF` - unmark);
+- paste the file with `cmc` (if we use `mc` it generates the error **"tried using g:netrw_localcopycmd<cp>; it doesn't work!"**).
+
 
 
 
