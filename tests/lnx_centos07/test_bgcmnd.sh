@@ -15,13 +15,13 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/fl_backup.sh"
 
 main() {
-    local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-    printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-    runInBackground "installPkg_COMMON_RUI" "wget" ""
+  runInBackground "installPkg_COMMON_RUI" "wget" ""
 
-    printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-    return $?
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  return $?
 }
 
 main $@
