@@ -29,7 +29,7 @@ SELinux_setUp_TFTSRV_RUI() {
 
   # to check the value `getsebool -a | egrep tftp'
   setsebool -P tftp_anon_write 1
-  setsebool -P tftp_anon_write 1
+  setsebool -P tftp_home_dir 1
 }
 
 fw_setUp_TFTPSRV_RUI() {
