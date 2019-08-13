@@ -1,0 +1,7 @@
+subnet:172.16.0.0
+subnetmask:255.255.255.0
+addr_range:172.16.0.21-150
+default-routers:172.16.0.1
+# if use tftp server create a group and add `allow bootp`
+next-server:172.16.0.4
+filename:/tftpboot/pxelinux.0
