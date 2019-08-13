@@ -113,34 +113,34 @@ prepareSudoersd_SM_RUI() {
   local -r sudoers_fl="/etc/sudoers"
   local -r sudoers_addon="/etc/sudoers.d/admins.$(hostname)"
   local -r sudoers_templ="
-    User_Alias	LOCAL_ADM_GROUP = $1
+  User_Alias	LOCAL_ADM_GROUP = $1
 
     # Run any command on any hosts but you must log in
     # %ALIAS|NAME% %WHERE%=(%WHO%)%WHAT%
 
     LOCAL_ADM_GROUP ALL=(ALL)ALL
     "
-  if [[ ! -f $sudoers_file ]]; then
-    touch $sudoers_addon
-    echo "$sudoers_templ" >$sudoers_addon
-  else
-    # add new user
-    local replace_str=""
-    replace_str=$(awk -v "user_name=$1" '/^User_Alias/ {
-            print $0,user_name
-        }' $sudoers_templ)
+    if [[ ! -f $sudoers_file ]]; then
+      touch $sudoers_addon
+      echo "$sudoers_templ" >$sudoers_addon
+    else
+      # add new user
+      local replace_str=""
+      replace_str=$(awk -v "user_name=$1" '/^User_Alias/ {
+      print $0,user_name
+    }' $sudoers_templ)
 
-    if [[ -n "replace_str" ]]; then
-      # - to write to a file: use -i option
-      # - to use shell variables use double qoutes
-      sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
-      sed -i "s/^\#includedir \/etc\/sudoers\.d/includedir \/etc\/sudoers\.d/g" $sudoers_fl
+  if [[ -n "replace_str" ]]; then
+    # - to write to a file: use -i option
+    # - to use shell variables use double qoutes
+    sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
+    sed -i "s/^\#includedir \/etc\/sudoers\.d/includedir \/etc\/sudoers\.d/g" $sudoers_fl
     else
       printf "$debug_prefix Erro Can't find User_Alias string\n"
       exit 1
-    fi
   fi
-}
+    fi
+  }
 
 #:
 #: arg0 - user
@@ -225,6 +225,60 @@ createAdmUser_SM_RUI() {
     printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n"
     exit 1
   fi
+}
+
+#:
+#: Create system no shell user
+#: arg0 - name
+#:
+createSysUser_SM_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix Enter the function [ $FUNCNAME ]\n"
+  checkNonEmptyArgs_COMMON_RUI "$1"
+
+  local user_name="$1"
+  local passwd=""
+
+  local isExist="$(getent shadow | cut -d : -f1 | grep $user_name)"
+  if [[ -n "$isExist" ]]; then
+    printf "$debug_prefix The user exists \n"
+    exit 1
+  fi
+
+  adduser -r -s /bin/nologin "$user_name"
+
+  printf "\nEnter password for the system user: "
+  read -s passwd
+
+  echo "$user_name:$psswd" | chpasswd 2>&1
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+#:
+#: Create FTP user
+#: arg0 - name
+#:
+createFtpUser_SM_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix Enter the function [ $FUNCNAME ]\n"
+  checkNonEmptyArgs_COMMON_RUI "$1"
+
+  local -r ftp_user="$1"
+
+  echo -e '#!/bin/sh\necho "This account is limited to FTP access only."' | sudo tee -a  /bin/ftponly
+  sudo chmod a+x /bin/ftponly
+
+  sudo adduser -s /bin/ftponly "$ftp_user"
+  sudo passwd "$ftp_user"
+  sudo mkdir -p "/home/$ftp_user/ftp/upload"
+  sudo chmod 550 "/home/$ftp_user/ftp"
+  sudo chmod 750 "/home/$ftp_user/ftp/upload"
+  sudo chown -R $ftp_user: "/home/$ftp_user/ftp"
+
+  echo "$ftp_user" | sudo tee -a /etc/vsftpd/user_list
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
 #:
@@ -355,7 +409,7 @@ setLocale_SM_RUI() {
   sed -i "0,/.*$ln.*$/ s/.*$ln.*$/$ln/g" $locale_gen_cfg_path 2>stream_error.log
   if [[ -e stream_error.log && -n "$(cat stream_error.log)" ]]; then
     printf "$debug_prefix ${RED_ROLLUP_IT} Error: Can't activate the loale. 
-                Error List: $(cat stream_error.log) ${END_ROLLUP_IT}\n"
+    Error List: $(cat stream_error.log) ${END_ROLLUP_IT}\n"
     exit 1
   fi
   locale-gen 2>stream_error.log

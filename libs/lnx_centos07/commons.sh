@@ -56,6 +56,10 @@ fi
 installPkg_COMMON_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   local rc
+  
+  checkNonEmptyArgs_COMMON_RUI "$1"
+  checkNonEmptyArgs_COMMON_RUI "$2"
+
   if [ -z $1 ]; then
     printf "${RED_ROLLUP_IT} $debug_prefix Error: Package name has not been passed ${END_ROLLUP_IT} \n"
     rc=255
@@ -103,10 +107,36 @@ installPkg_COMMON_RUI() {
     fi
   }
 
+checkNonEmptyArgs_COMMON_RUI() {
+  declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} enter the function ${END_ROLLUP_IT} \n"
+
+  if [ $# -eq 0 ]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: no arguments has been passed.\nSee help: $(help_FLBACKUP_RUI) ${END_ROLLUP_IT}\n" >&2 
+    exit 1
+  fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT}\n"
+}
+
+checkNetworkAddr_COMMON_RUI() {
+  if [[ $# -ne 0 && -z $(echo $1 | grep -P $IP_ADDR_REGEXP_ROLLUP_IT) && -z $(echo $1 | grep -P $DOMAIN_REGEXP_ROLLUP_IT) ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Invalid network name of the host: it must be either an ip address or FQDN.\nSee help${END_ROLLUP_IT}\n" >&2
+    exit 1
+  fi 
+}
+
+checkIpAddrRange_COMMON_RUI() {
+  if [[ $# -ne 0 && -z $(echo "$1" | grep -P $IP_ADDR_RANGE_REGEXP_ROLLUP_IT) ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Inavlid IP addr range (example, 192.168.0.1-100) ${END_ROLLUP_IT}\n" >&2
+    exit 1
+  fi 
+}
+
 #
 # arg1 - verifying variable
 #
-checkIfType() {
+checkIfType_COMMON_RUI() {
   local var=$( declare -p $1 )
   local reg='^declare -n [^=]+=\"([^\"]+)\"$'
   while [[ $var =~ $reg ]]; do
@@ -147,7 +177,7 @@ installPkgList_COMMON_RUI() {
     exit $rc;
   fi
 
-  if [ -z "$(checkIfType $1 | egrep "ARRAY")" ]; then
+  if [ -z "$(checkIfType_COMMON_RUI $1 | egrep "ARRAY")" ]; then
     printf "${RED_ROLLUP_IT} $debug_prefix Error: Passsed package list  is not ARRAY ${END_ROLLUP_IT} \n"
     rc=255
     exit $rc;
@@ -228,12 +258,12 @@ getSudoUser_COMMON_RUI() {
   echo "$([[ -n "$SUDO_USER" ]] && echo "$SUDO_USER" || echo "$(whoami)")"
 }
 
-to_begin() {
+to_begin_COMMON_RUI() {
   tput cup 0 0
   return $?
 }
 
-to_end() {
+to_end_COMMON_RUI() {
   let __x=$(tput lines)-1
   let __y=$(tput cols)-1
   tput cup $__y $__x
@@ -245,7 +275,7 @@ to_end() {
 #: arg1 - x
 #: arg2 - y
 #:
-to_yx() {
+to_yx_COMMON_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -268,14 +298,14 @@ to_yx() {
 #:
 #: Get current cursor position: number of columns
 #:
-cpos_x(){
+cpos_x_COMMON_RUI(){
   printf "$(echo -en "\E[6n";read -sdR CURPOS; CURPOS=${CURPOS#*[};echo "${CURPOS}" | cut -d";" -f 2)"
 }
 
 #:
 #: Get current cursor position: number of lines
 #:
-cpos_y(){
+cpos_y_COMMON_RUI(){
   printf "$(echo -en "\E[6n";read -sdR CURPOS; CURPOS=${CURPOS#*[};echo "${CURPOS}" | cut -d";" -f 1)"
 }
 
@@ -283,7 +313,7 @@ cpos_y(){
 #: Run a command in background
 #: args - running command with arguments
 #:
-runInBackground(){
+runInBackground_COMMON_RUI(){
   local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -301,14 +331,14 @@ runInBackground(){
     printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command $rcmd ${END_ROLLUP_IT} \n"
     printf "${MAG_ROLLUP_IT}"
 
-    local -r start_y=$(cpos_y)
+    local -r start_y=$(cpos_y_COMMON_RUI)
     while [ kill -0 $rc_pid ]
     do
       if [[ i -gt $clmns || i -eq 0 ]]; then
         let $start_y++
-        to_yx $start_y $end_x
+        to_yx_COMMON_RUI $start_y $end_x
         printf " ]"
-        to_yx $start_y 0 
+        to_yx_COMMON_RUI $start_y 0 
         printf "[ "
         i=0
       fi
