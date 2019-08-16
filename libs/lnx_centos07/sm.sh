@@ -36,14 +36,17 @@ rollUpIt_SM_RUI() {
     createAdmUser_SM_RUI $1 $2
   else
     printf "$debug_prefix The user exists. Copy skel config \n"
-    skeletonUserHome $1
   fi
-
-  if [[ ! "$1"="root" ]]; then
+  if [[ "$1" != "root" ]]; then
     prepareSudoersd_SM_RUI $1
   fi
 
-  setLocale_SM_RUI "ru_RU.UTF-8 UTF-8"
+  # see https://unix.stackexchange.com/questions/269078/executing-a-bash-script-function-with-sudo
+  # __FUNC=$(declare -f skeletonUserHome; declare -f onErrors_SM_RUI)
+  __FUNC=$(declare -f skeletonUserHome)
+  sudo -u "$1" sh -c "$__FUNC;skeletonUserHome $1"
+ 
+  setLocale_SM_RUI "ru_RU.utf8"
   prepareSSH_SM_RUI
 }
 
@@ -55,21 +58,31 @@ skeletonUserHome() {
   printf "$debug_prefix enter the \n"
   printf "$debug_prefix [$1] parameter #1 \n"
 
-  declare -r local username="$1"
-  declare -r local isExist="$(getent shadow | cut -d : -f1 | grep $username)"
+  local -r username="$1"
+  local -r isExist="$(getent passwd | cut -d : -f1 | egrep "$username")"
+  local rc=""
 
+  export PATH="$PATH:/usr/local/bin"
+  
   if [[ -z "$isExist" ]]; then
-    onErrors_SM_RUI "$debug_prefix The user doesn't exist"
+    echo "User doesn't exist"
+#    onErrors_SM_RUI "$debug_prefix The user doesn't exist"
     exit 1
   fi
 
   local user_home_dir="/home/$username"
-  if [[ "$username"="root" ]]; then
-    user_home_dir="/root"
-  fi
+  [[ "$username" == "root" ]] && user_home_dir="/root"
 
-  rsync -rtvu "$SKEL_DIR_ROLL_UP_IT/" "$user_home_dir"
-  chown -Rf "$username:$username" "$user_home_dir"
+  cd "$user_home_dir"
+  # git clone -b develop https://github.com/gonzo-soc/dotfiles "$user_home_dir/.dotfiles" && rcup -fv && rcup -fv -t vim -t tmux 2> "$user_home_dir/stream_error.log"
+  git clone -b develop https://github.com/gonzo-soc/dotfiles "$user_home_dir/.dotfiles" && rcup -fv -t tmux -t vim 2> "$user_home_dir/stream_error.log"
+  rc="$?"
+
+  if [ "$rc" -ne 0 ]; then
+    echo "Clone issue"
+#    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Cloning the rollUpIt rep failed ${END_ROLLUP_IT}\n"
+    exit 1
+  fi
 }
 
 #
@@ -110,49 +123,48 @@ prepareSudoersd_SM_RUI() {
     exit 1
   fi
 
-  local -r sudoers_fl="/etc/sudoers"
+  local -r sudoers_file="/etc/sudoers"
   local -r sudoers_addon="/etc/sudoers.d/admins.$(hostname)"
-  local -r sudoers_templ="
-  User_Alias	LOCAL_ADM_GROUP = $1
+  local -r sudoers_templ="$(cat <<-EOF
+User_Alias	LOCAL_ADM_GROUP = $1
 
-    # Run any command on any hosts but you must log in
-    # %ALIAS|NAME% %WHERE%=(%WHO%)%WHAT%
+# Run any command on any hosts but you must log in
+# %ALIAS|NAME% %WHERE%=(%WHO%)%WHAT%
 
-    LOCAL_ADM_GROUP ALL=(ALL)ALL
-    "
-    if [[ ! -f $sudoers_file ]]; then
-      touch $sudoers_addon
-      echo "$sudoers_templ" >$sudoers_addon
-    else
-      # add new user
-      local replace_str=""
-      replace_str=$(awk -v "user_name=$1" '/^User_Alias/ {
-      print $0,user_name
-    }' $sudoers_templ)
+LOCAL_ADM_GROUP ALL=(ALL)ALL
+EOF
+)"
+if [[ ! -f $sudoers_addon ]]; then
+  touch $sudoers_addon
+  echo "$sudoers_templ" >$sudoers_addon
+else
+  # add new user
+  local replace_str=""
+  replace_str=$(echo "$sudoers_templ" | awk -v user_name="$1" '/^User_Alias/ {
+  print $0","user_name
+}')
 
-  if [[ -n "replace_str" ]]; then
-    # - to write to a file: use -i option
-    # - to use shell variables use double qoutes
-    sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
-    sed -i "s/^\#includedir \/etc\/sudoers\.d/includedir \/etc\/sudoers\.d/g" $sudoers_fl
-    else
-      printf "$debug_prefix Erro Can't find User_Alias string\n"
-      exit 1
-  fi
-    fi
-  }
+if [[ -n "replace_str" ]]; then
+  # - to write to a file: use -i option
+  # - to use shell variables use double qoutes
+  sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
+  sed -i "s/^\#\s*\#includedir\s*\/etc\/sudoers\.d\s*$/\#includedir \/etc\/sudoers\.d/g" $sudoers_file
+  else
+    printf "$debug_prefix Error Can't find User_Alias string\n"
+    exit 1
+fi
+fi
+}
 
 #:
 #: arg0 - user
 #: arg1 - pwd
-#: arg2 - match_pwd
 #:
 createAdmUser_SM_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix Enter the \n"
   printf "$debug_prefix [$1] parameter #1 \n"
   printf "$debug_prefix [$2] parameter #1 \n"
-  printf "$debug_prefix [$3] parameter #2 \n"
 
   local errs=""
   local to_match="${3:-false}"
@@ -166,16 +178,6 @@ createAdmUser_SM_RUI() {
     if [[ -n "$isExist" ]]; then
       printf "$debug_prefix The user exists \n"
       exit 1
-    fi
-
-    if [[ "$to_match" == "true" ]]; then
-      # check passwd matching
-      local isMatchingRes="false"
-      isPwdMatching_COMMON_RUI $2 isMatchingRes
-      if [[ "isMatchingRes" == "false" ]]; then
-        printf "${RED_ROLLUP_IT} $$debug_prefix Error: Can't create the user: Password does not match the regexp ${END_ROLLUP_IT} $\n"
-        exit 1
-      fi
     fi
 
     printf "debug: [ $0 ] There is no [ $1 ] user, let's create him \n"
@@ -388,38 +390,20 @@ installDefPkgSuit_SM_RUI() {
 #
 setLocale_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-  declare -r local locale_gen_cfg_path="/etc/locale.gen"
-  if [[ ! -e $locale_gen_cfg_path ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error: No locale.gen exists ${END_ROLLUP_IT}\n"
+  if [ -z "$1" ]; then
+    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Empty argument: locale  ${END_ROLLUP_IT}"
     exit 1
   fi
 
-  if [[ -z "$1" ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error: No locale name passed ${END_ROLLUP_IT}\n"
-    exit 1
-  fi
+  local -r locale_str="$1"
 
-  declare -r local ln="$1"
-  if [[ -e stream_error.log ]]; then
-    echo "" >stream_error.log
-  fi
+  [[ -z "$(localectl list-locales | egrep "$locale_str")" ]] && (onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} There is no input locale [$locale_str] in the list of available locales ${END_ROLLUP_IT}"; exit 1) 
 
-  sed -i "0,/.*$ln.*$/ s/.*$ln.*$/$ln/g" $locale_gen_cfg_path 2>stream_error.log
-  if [[ -e stream_error.log && -n "$(cat stream_error.log)" ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Can't activate the loale. 
-    Error List: $(cat stream_error.log) ${END_ROLLUP_IT}\n"
-    exit 1
-  fi
-  locale-gen 2>stream_error.log
+  localectl set-locale LANG="$locale_str"
 
-  if [[ -e stream_error.log && -n "$(cat stream_error.log)" ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Can't activate the locale. Error List: $(cat stream_error.log) ${END_ROLLUP_IT}\n"
-    exit 1
-  fi
-
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
 
 prepareSSH_SM_RUI() {
