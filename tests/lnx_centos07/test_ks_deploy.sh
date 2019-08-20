@@ -44,7 +44,7 @@ function main() {
   fi
 
   yum -yq upgrade 
-  rollUpIt_SM_RUI "$user" "$pwd" 
+  rollUpIt_SM_RUI "$user" "$pwd" "yes_def_install"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }

@@ -169,7 +169,7 @@ checkIfType_COMMON_RUI() {
 installPkgList_COMMON_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   local rc=0
-  local isQuiet="${2:-}"
+  local isQuiet="${2:-"q"}"
 
   if [ -z $1 ]; then
     printf "${RED_ROLLUP_IT} $debug_prefix Error: Empty requried params passed ${END_ROLLUP_IT} \n"

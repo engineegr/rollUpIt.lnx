@@ -349,40 +349,10 @@ rmUser_SM_RUI() {
 }
 
 installDefPkgSuit_SM_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  declare -r local pkg_list=('sudo' 'tmux' 'vim' 'git' 'tcpdump')
-  local res=""
-  local errs=""
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r pkg_list=("sudo" "tmux" "vim" "git" "tcpdump" "wget" "lsof" "net-tools")
 
-  apt-get -y update
-
-  for i in "${pkg_list[@]}"; do
-    printf "$debug_prefix Current element is $i \n"
-
-    if [[ -e stream_error.log ]]; then
-      echo "" >stream_error.log
-    fi
-
-    isPkgInstalled_COMMON_RUI $i res
-    if [[ "$res" == "false" ]]; then
-      printf "$debug_prefix [ $i ] is not installed \n"
-      apt-get -y install $i 2>stream_error.log 1>stdout.log
-      if [[ -e stream_error.log ]]; then
-        errs="$(cat stream_error.log)"
-      fi
-
-      if [[ -n "$errs" ]]; then
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't install $i . Text of errors: $errs ${END_ROLLUP_IT} \n"
-        exit 1
-      else
-        printf "$debug_prefix [ $i ] is successfully installed \n"
-      fi
-    else
-      printf "$debug_prefix [ $i ] is installed \n"
-    fi
-  done
-
-  apt-get -y dist-upgrade
+  installPkgList_COMMON_RUI pkg_list ""
 }
 
 #
