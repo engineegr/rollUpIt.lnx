@@ -87,9 +87,9 @@ sudo
 %end
 
 %post --log /tmp/ks_post_scripts.log
-yum -yq install git
-mkdir -p /usr/local/src/post-scripts
-git clone --single-branch --branch develop https://github.com/gonzo-soc/rollUpIt.lnx /usr/local/src/post-scripts/
+yum -yq update && yum -yq install git
+mkdir -p /usr/local/src/post-scripts/rollUpIt.lnx
+git clone --single-branch --branch develop https://github.com/gonzo-soc/rollUpIt.lnx /usr/local/src/post-scripts/rollUpIt.lnx
 /usr/local/src/post-scripts/rollUpIt.lnx/tests/lnx_centos07/test_ks_deploy.sh
 %end
 EOF

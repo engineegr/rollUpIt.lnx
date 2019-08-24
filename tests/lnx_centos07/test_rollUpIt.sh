@@ -19,8 +19,8 @@ function main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  local -r user="likhobabin_im"
-  local pwd=""
+  local -r user="user000"
+  local pwd="SUPER"
   local prompt=""
 
   # password quality we can define in /etc/security/pwquality.conf

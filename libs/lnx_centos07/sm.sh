@@ -45,7 +45,7 @@ rollUpIt_SM_RUI() {
   # __FUNC=$(declare -f skeletonUserHome; declare -f onErrors_SM_RUI)
   __FUNC=$(declare -f skeletonUserHome)
   sudo -u "$1" sh -c "$__FUNC;skeletonUserHome $1"
- 
+
   setLocale_SM_RUI "ru_RU.utf8"
   prepareSSH_SM_RUI
 }
@@ -63,10 +63,10 @@ skeletonUserHome() {
   local rc=""
 
   export PATH="$PATH:/usr/local/bin"
-  
+
   if [[ -z "$isExist" ]]; then
     echo "User doesn't exist"
-#    onErrors_SM_RUI "$debug_prefix The user doesn't exist"
+    #    onErrors_SM_RUI "$debug_prefix The user doesn't exist"
     exit 1
   fi
 
@@ -80,7 +80,7 @@ skeletonUserHome() {
 
   if [ "$rc" -ne 0 ]; then
     echo "Clone issue"
-#    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Cloning the rollUpIt rep failed ${END_ROLLUP_IT}\n"
+    #    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Cloning the rollUpIt rep failed ${END_ROLLUP_IT}\n"
     exit 1
   fi
 }
@@ -173,7 +173,7 @@ createAdmUser_SM_RUI() {
     echo "" >stream_error.log
   fi
 
-  if [[ -n "$1" && -n "$2" ]]; then
+  if [[ -n "$1" ]]; then
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
     if [[ -n "$isExist" ]]; then
       printf "$debug_prefix The user exists \n"
@@ -191,17 +191,33 @@ createAdmUser_SM_RUI() {
       printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ $errs ]${END_ROLLUP_IT}"
       exit 1
     else
-      echo "$1:$2" | chpasswd 2>stream_error.log 1>stdout.log
-      if [[ -e stream_error.log ]]; then
-        errs="$(cat stream_error.log)"
-      fi
-
-      if [[ -n "$errs" ]]; then
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n"
-        userdel -r $1
-
-        exit 1
+      if [ -z "$2" ]; then
+        chage -d 0 "$1"
       else
+        echo "$1:$2" | chpasswd 2>stream_error.log 1>stdout.log
+        if [[ -e stream_error.log ]]; then
+          errs="$(cat stream_error.log)"
+        fi
+
+        if [[ -n "$errs" ]]; then
+          printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n"
+          userdel -r $1
+
+          exit 1
+        fi
+
+        chage -d 0 "$1" 2>stream_error.log 1>stdout.log
+        if [[ -e stream_error.log ]]; then
+          errs="$(cat stream_error.log)"
+        fi
+
+        if [[ -n "$errs" ]]; then
+          printf "${RED_ROLLUP_IT} $debug_prefix Error: can't expire  password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n"
+          userdel -r $1
+
+          exit 1
+        fi
+
         local isSudo=$(getent group | cut -d : -f1 | grep sudo)
         local isWheel=$(getent group | cut -d : -f1 | grep wheel)
 
