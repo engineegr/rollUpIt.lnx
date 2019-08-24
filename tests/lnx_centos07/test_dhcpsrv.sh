@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -o errexit
-set -o xtrace
+# set -o xtrace
 set -o nounset
 
 # exec 2>std.log

@@ -14,6 +14,7 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/addVars.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/dhcp_srv.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
 
 function main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "

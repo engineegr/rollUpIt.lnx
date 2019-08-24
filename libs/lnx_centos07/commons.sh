@@ -276,37 +276,40 @@ to_end_COMMON_RUI() {
 #: arg2 - y
 #:
 to_yx_COMMON_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  let __xmax=$(tput lines)-1
-  let __ymax=$(tput cols)-1
-  local -r __x=$1
-  local -r __y=$2
+  let __xmax=$(tput cols)+1
+  let __ymax=$(tput lines)+1
+  local -r __y=$1
+  local -r __x=$2
 
   if [[ $__x -gt $__xmax || $__y -gt $__ymax ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error incorrect arguments xmax [$__xmax]; ymax[$__ymax] ${END_ROLLUP_IT} \n"
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error incorrect arguments [$__x, $__y] xmax [$__xmax]; ymax[$__ymax] ${END_ROLLUP_IT} \n"
     return 255
   fi
 
   tput cup $__y $__x
 
-  printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
   return $?
+}
+
+colrow_pos_COMMON_RUI() {
+  local CURPOS
+  read -sdR -p $'\E[6n' CURPOS
+  CURPOS=${CURPOS#*[} # Strip decoration characters <ESC>[
+  echo "${CURPOS}"    # Return position in "row;col" format
 }
 
 #:
 #: Get current cursor position: number of columns
 #:
 cpos_x_COMMON_RUI(){
-  printf "$(echo -en "\E[6n";read -sdR CURPOS; CURPOS=${CURPOS#*[};echo "${CURPOS}" | cut -d";" -f 2)"
+  echo $(colrow_pos_COMMON_RUI) | cut -d";" -f 2
 }
 
 #:
 #: Get current cursor position: number of lines
 #:
 cpos_y_COMMON_RUI(){
-  printf "$(echo -en "\E[6n";read -sdR CURPOS; CURPOS=${CURPOS#*[};echo "${CURPOS}" | cut -d";" -f 1)"
+  echo $(colrow_pos_COMMON_RUI) | cut -d";" -f 1
 }
 
 #:
@@ -318,53 +321,36 @@ runInBackground_COMMON_RUI(){
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   local -r rcmd=$@
-  let local -r clmns=$(tput lines)-6
-  let local -r end_x=$(tput cols)-3
+  let cols=$(tput cols)
 
-    # start command
-    $rcmd 2>&1 1>"$ROOT_DIR_ROLL_UP_IT/logs/$FUNCNAME_$(date +%H%M_%Y%m)_stdout.log" & 
+  # start command
+  eval "$rcmd" &> "$ROOT_DIR_ROLL_UP_IT/logs/${FUNCNAME}_$(date +%H%M_%Y%m)_stdout.log" & 
 
-    local -r rc_pid=$!
-    local i=0
-    local p=0
+  local -r rc_pid=$!
+  printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command $rcmd ${END_ROLLUP_IT} \n"
+  printf "${MAG_ROLLUP_IT}"
+  local -r start_y=$(cpos_y_COMMON_RUI)
+  local -r start_x=$(cpos_x_COMMON_RUI)
+  local x=$start_x
+  local back=0
+  while kill -0 $rc_pid 2>/dev/null
+  do
+    [[ $x -ge $cols ]] && back=1
+    [[ $x -le $start_x ]] && back=0 && to_yx_COMMON_RUI $start_y 0
 
-    printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command $rcmd ${END_ROLLUP_IT} \n"
-    printf "${MAG_ROLLUP_IT}"
+    if [[ back -ne 1 ]]; then
+      printf "1"
+      x=$(cpos_x_COMMON_RUI)
+    else
+      [[ $x -gt 1 ]] && let x-=1
+      to_yx_COMMON_RUI $start_y $x
+      printf " "
+   fi 
 
-    local -r start_y=$(cpos_y_COMMON_RUI)
-    while [ kill -0 $rc_pid ]
-    do
-      if [[ i -gt $clmns || i -eq 0 ]]; then
-        let $start_y++
-        to_yx_COMMON_RUI $start_y $end_x
-        printf " ]"
-        to_yx_COMMON_RUI $start_y 0 
-        printf "[ "
-        i=0
-      fi
+    sleep .1
+  done
 
-      p=$((i%3))
-      case "$p" in
-        0)
-          printf "||"
-          ;;
-        1)
-          printf "\\"
-          ;;
-        2)
-          printf "//"
-          ;;
-        *)
-          printf "$debug_prefix ${RED_ROLLUP_IT} [$FUNCNAME]:Error Unknown case ${END_ROLLUP_IT} \n"
-          echo
-          ;;
-      esac
-
-      let i++
-      sleep .1
-    done
-
-    printf "${END_ROLLUP_IT}"
-    printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
-    return $?
-  }
+  printf "${END_ROLLUP_IT}"
+  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  return $?
+}

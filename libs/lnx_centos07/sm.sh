@@ -366,7 +366,7 @@ rmUser_SM_RUI() {
 
 installDefPkgSuit_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  local -r pkg_list=("sudo" "tmux" "vim" "git" "tcpdump" "wget" "lsof" "net-tools")
+  local -r pkg_list=("sudo" "git" "tcpdump" "wget" "lsof" "net-tools")
 
   installPkgList_COMMON_RUI pkg_list ""
 }
