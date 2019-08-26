@@ -325,8 +325,42 @@ runInBackground_COMMON_RUI(){
 
   # start command
   eval "$rcmd" &> "$ROOT_DIR_ROLL_UP_IT/logs/${FUNCNAME}_$(date +%H%M_%Y%m)_stdout.log" & 
+  waitForCmnd_COMMON_RUI $!
+  
+  printf "${END_ROLLUP_IT}"
+  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  return $?
+}
 
-  local -r rc_pid=$!
+#:
+#: Run a command in background
+#: args - running command with arguments
+#:
+runFuncInBackground_COMMON_RUI(){
+  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  local -r rcmd=$@
+  let cols=$(tput cols)
+
+  # start command
+  # if we add quotes ("") we will get: No such file found
+  $rcmd &> "$ROOT_DIR_ROLL_UP_IT/logs/${FUNCNAME}_$(date +%H%M_%Y%m)_stdout.log" & 
+  waitForCmnd_COMMON_RUI $!
+  
+  printf "${END_ROLLUP_IT}"
+  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  return $?
+}
+#:
+#: Wait a command running in background
+#: arg0 - cmnd_pid
+#:
+waitForCmnd_COMMON_RUI() {
+  checkNonEmptyArgs_COMMON_RUI $1
+  checkNonEmptyArgs_COMMON_RUI $@
+
+  local -r rc_pid=$1
   printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command $rcmd ${END_ROLLUP_IT} \n"
   printf "${MAG_ROLLUP_IT}"
   local -r start_y=$(cpos_y_COMMON_RUI)
@@ -345,12 +379,8 @@ runInBackground_COMMON_RUI(){
       [[ $x -gt 1 ]] && let x-=1
       to_yx_COMMON_RUI $start_y $x
       printf " "
-   fi 
+    fi 
 
     sleep .1
   done
-
-  printf "${END_ROLLUP_IT}"
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
-  return $?
 }

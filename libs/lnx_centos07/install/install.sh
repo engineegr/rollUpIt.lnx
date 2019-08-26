@@ -4,9 +4,14 @@
 #: Install Generic Colouriser (see https://github.com/garabik/grc)
 #:
 install_grc_INSTALL_RUI() {
+  [[ -n "$(which grc)" || -n "$(which grcat)" ]] && printf "$debug_prefix ${RED_ROLLUP_IT} grc has been already installed ${END_ROLLUP_IT} \n" && return 255
+
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-  cd /usr/local/src && git clone https://github.com/garabik/grc.git && sh grc/install.sh 2>&1 | tee logs/install_grc_INSTALL_RUI.logs
+  cd /usr/local/src
+  git clone https://github.com/garabik/grc
+  cd grc
+  . ./install.sh "" "" # after that check python version in "grc" and "grcat" (executive file)
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
@@ -20,6 +25,9 @@ install_bgp_INSTALL_RUI() {
   
   checkNonEmptyArgs_COMMON_RUI "$1"
   local -r home_dir="$1"  
+
+  [[ -d "$home_dir" ]] && printf "$debug_prefix ${RED_ROLLUP_IT} Bash git prompt has been already installed ${END_ROLLUP_IT} \n" && return 255
+  
   cd $home_dir
   git clone https://github.com/magicmonty/bash-git-prompt.git .bash-git-prompt --depth=1
 
@@ -96,7 +104,7 @@ install_tmux_INSTALL_RUI() {
   cd libevent-2.1.8-stable
   ./configure --prefix=/usr/local
   make
-  sudo make install
+  make install
 
   cd $tmp_dir/tmux
 
@@ -106,7 +114,7 @@ install_tmux_INSTALL_RUI() {
   cd tmux-2.7
   LDFLAGS="-L/usr/local/lib -Wl,-rpath=/usr/local/lib" ./configure --prefix=/usr/local
   make
-  sudo make install
+  make install
 
   # pkill tmux
   # close your terminal window (flushes cached tmux executable)
