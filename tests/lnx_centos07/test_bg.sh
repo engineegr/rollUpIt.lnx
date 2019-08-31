@@ -18,8 +18,11 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
 function main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  # local -r cmd_list=("install_bgp_INSTALL_RUI" "du -d 1 -h -BM --exclude 'proc' / 2>/dev/null" "yum -y update" "ls -la")
+  local -r cmd_list=("install_bgp_INSTALL_RUI /home/likhobabin_im" "ls -la" "du -d 1 -h -BM --exclude 'proc' / 2>/dev/null" "yum -y update")
+  # local -r cmd_list=("yum -y update")
+  runCmdListInBackground_COMMON_RUI cmd_list
 
-  runInBackground_COMMON_RUI "yum -y update" 
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }

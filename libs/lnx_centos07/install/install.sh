@@ -4,7 +4,7 @@
 #: Install Generic Colouriser (see https://github.com/garabik/grc)
 #:
 install_grc_INSTALL_RUI() {
-  [[ -n "$(which grc)" || -n "$(which grcat)" ]] && printf "$debug_prefix ${RED_ROLLUP_IT} grc has been already installed ${END_ROLLUP_IT} \n" && return 255
+  [[ -n "$(which grc)" || -n "$(which grcat)" ]] && printf "$debug_prefix ${GRN_ROLLUP_IT} grc has been already installed ${END_ROLLUP_IT} \n" 
 
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
@@ -21,12 +21,14 @@ install_grc_INSTALL_RUI() {
 #:
 install_bgp_INSTALL_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function; $1 ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} [parent_pid]: $$ ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} [current_pid]: $BASHPID ${END_ROLLUP_IT} \n"
   
   checkNonEmptyArgs_COMMON_RUI "$1"
   local -r home_dir="$1"  
 
-  [[ -d "$home_dir" ]] && printf "$debug_prefix ${RED_ROLLUP_IT} Bash git prompt has been already installed ${END_ROLLUP_IT} \n" && return 255
+  [[ -d "$home_dir/.bash-git-prompt" ]] && printf "$debug_prefix ${GRN_ROLLUP_IT} Bash git prompt has been already installed ${END_ROLLUP_IT} \n"
   
   cd $home_dir
   git clone https://github.com/magicmonty/bash-git-prompt.git .bash-git-prompt --depth=1

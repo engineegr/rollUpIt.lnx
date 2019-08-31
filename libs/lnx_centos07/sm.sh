@@ -22,7 +22,7 @@ rollUpIt_SM_RUI() {
   printf "$debug_prefix [$installDefPkgs] parameter #3 \n"
 
   if [[ -z "$1" || -z "$2" ]]; then
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: No parameters passed into the ${END_ROLLUP_IT}\n"
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: No parameters passed into the ${END_ROLLUP_IT}\n" >&2
     exit 1
   fi
 
@@ -96,7 +96,7 @@ onErrors_SM_RUI() {
   fi
 
   if [[ -n "$errs" ]]; then
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: $err_msg [ $errs ]${END_ROLLUP_IT}\n"
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: $err_msg [ $errs ]${END_ROLLUP_IT}\n" >&2
     exit 1
   fi
 }
@@ -110,7 +110,7 @@ prepareSkel_SM_RUI() {
     find /etc/skel/ -mindepth 1 -maxdepth 1 | xargs rm -Rf
     rsync -rtvu --delete $SKEL_DIR_ROLL_UP_IT/ /etc/skel
   else
-    printf "${RED_ROLLUP_IT} $debug_prefix Error skel dir doesn't exist ${END_ROLLUP_IT} \n"
+    printf "${RED_ROLLUP_IT} $debug_prefix Error skel dir doesn't exist ${END_ROLLUP_IT} \n" >&2
     exit 1
   fi
 }
@@ -188,7 +188,7 @@ createAdmUser_SM_RUI() {
     fi
 
     if [[ -n "$errs" ]]; then
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ $errs ]${END_ROLLUP_IT}"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ $errs ]${END_ROLLUP_IT}" >&2
       exit 1
     else
       if [ -z "$2" ]; then
@@ -200,7 +200,7 @@ createAdmUser_SM_RUI() {
         fi
 
         if [[ -n "$errs" ]]; then
-          printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n"
+          printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n" >&2
           userdel -r $1
 
           exit 1
@@ -212,7 +212,7 @@ createAdmUser_SM_RUI() {
         fi
 
         if [[ -n "$errs" ]]; then
-          printf "${RED_ROLLUP_IT} $debug_prefix Error: can't expire  password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n"
+          printf "${RED_ROLLUP_IT} $debug_prefix Error: can't expire  password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n" >&2
           userdel -r $1
 
           exit 1
@@ -240,7 +240,7 @@ createAdmUser_SM_RUI() {
       fi
     fi
   else
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n"
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n" >&2
     exit 1
   fi
 }
@@ -322,11 +322,11 @@ kickUser_SM_RUI() {
     rc=$?
     errs="$(cat stream_error.log)"
     if [[ $rc -ne 0 || -n "$errs" ]]; then
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user: [ $errs ]${END_ROLLUP_IT}\n"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
       exit 1
     fi
   else
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n"
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n" >&2
     exit 1
   fi
 
@@ -355,11 +355,11 @@ rmUser_SM_RUI() {
     rc=$?
     errs="$(cat stream_error.log)"
     if [[ $rc -ne 0 || -n "$errs" ]]; then
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ $errs ]${END_ROLLUP_IT}\n"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
       exit 1
     fi
   else
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n"
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n" >&2
     exit 1
   fi
 }
@@ -408,7 +408,7 @@ installEpel_SM_RUI() {
     yum -y install epel-release
     rc=$?
     if [ rc -ne 0 ]; then
-      printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't install epel-release ${END_ROLLUP_IT} \n"
+      printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't install epel-release ${END_ROLLUP_IT} \n" >&2
       return $rc
     fi
   else
@@ -416,7 +416,7 @@ installEpel_SM_RUI() {
     local -r url="http://dl.fedoraproject.org/pub/epel/$epel_rpm"
     wget "$url"
     if [ rc -ne 0]; then
-      printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't download epel-release-7-9.noarch.rpm ${END_ROLLUP_IT} \n"
+      printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't download epel-release-7-9.noarch.rpm ${END_ROLLUP_IT} \n" >&2
       return $rc
     fi
 

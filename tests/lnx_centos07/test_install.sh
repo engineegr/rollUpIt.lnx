@@ -21,11 +21,8 @@ function main() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
   local -r user_home_dir="/home/likhobabin_im"
   
-  runFuncInBackground_COMMON_RUI "install_grc_INSTALL_RUI" & 
-  # runFuncInBackground_COMMON_RUI install_bgp_INSTALL_RUI "$user_home_dir" & 
-  runFuncInBackground_COMMON_RUI "install_bgp_INSTALL_RUI" "$user_home_dir" & 
-  # runFuncInBackground_COMMON_RUI "install_bgp_INSTALL_RUI" & 
-#  runFuncInBackground_COMMON_RUI "install_tmux_INSTALL_RUI"
+  runInBackground_COMMON_RUI "install_grc_INSTALL_RUI" & 
+  runInBackground_COMMON_RUI "install_bgp_INSTALL_RUI $user_home_dir" & 
 
   chown -Rf likhobabin_im:likhobabin_im "$user_home_dir"
 
