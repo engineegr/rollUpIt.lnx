@@ -10,10 +10,9 @@
 #
 # arg0 - username
 # arg1 - password
-# arg2 - install default pckges (yes|no_def_install)
 #
-rollUpIt_SM_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+prepareUser_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix enter the \n"
   printf "$debug_prefix [$1] parameter #1 \n"
   printf "$debug_prefix [$2] parameter #2 \n"
@@ -24,10 +23,6 @@ rollUpIt_SM_RUI() {
   if [[ -z "$1" || -z "$2" ]]; then
     printf "${RED_ROLLUP_IT} $debug_prefix Error: No parameters passed into the ${END_ROLLUP_IT}\n" >&2
     exit 1
-  fi
-
-  if [[ "$installDefPkgs" == "yes_def_install" ]]; then
-    installDefPkgSuit_SM_RUI
   fi
 
   local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
@@ -43,8 +38,10 @@ rollUpIt_SM_RUI() {
 
   # see https://unix.stackexchange.com/questions/269078/executing-a-bash-script-function-with-sudo
   # __FUNC=$(declare -f skeletonUserHome; declare -f onErrors_SM_RUI)
-  __FUNC=$(declare -f skeletonUserHome)
-  sudo -u "$1" sh -c "$__FUNC;skeletonUserHome $1"
+  __FUNC_SKEL=$(declare -f skeletonUserHome)
+  __FUNC_ONERRS=$(declare -f onErrors_SM_RUI)
+
+  sudo -u "$1" sh -c "$__FUNC_SKEL;$__FUNC_ONERRS;skeletonUserHome $1"
 
   setLocale_SM_RUI "ru_RU.utf8"
   prepareSSH_SM_RUI
@@ -54,7 +51,7 @@ rollUpIt_SM_RUI() {
 # arg0 - username
 #
 skeletonUserHome() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix enter the \n"
   printf "$debug_prefix [$1] parameter #1 \n"
 
@@ -65,8 +62,7 @@ skeletonUserHome() {
   export PATH="$PATH:/usr/local/bin"
 
   if [[ -z "$isExist" ]]; then
-    echo "User doesn't exist"
-    #    onErrors_SM_RUI "$debug_prefix The user doesn't exist"
+    onErrors_SM_RUI "$debug_prefix The user doesn't exist"
     exit 1
   fi
 
@@ -79,8 +75,7 @@ skeletonUserHome() {
   rc="$?"
 
   if [ "$rc" -ne 0 ]; then
-    echo "Clone issue"
-    #    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Cloning the rollUpIt rep failed ${END_ROLLUP_IT}\n"
+    onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
     exit 1
   fi
 }
@@ -89,20 +84,21 @@ skeletonUserHome() {
 # arg0 - error msg
 #
 onErrors_SM_RUI() {
-  declare -r local err_msg=$([[ -z "$1" ]] && echo "ERROR!!!" || echo "$1")
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  local -r err_msg=$([[ -z "$1" ]] && echo "ERROR!!!" || echo "$1")
   local errs=""
   if [[ -e stream_error.log ]]; then
     errs="$(cat stream_error.log)"
   fi
 
   if [[ -n "$errs" ]]; then
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: $err_msg [ $errs ]${END_ROLLUP_IT}\n" >&2
+    printf "$debug_prefix Error: $err_msg [ $errs ]\n" >&2
     exit 1
   fi
 }
 
 prepareSkel_SM_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix enter the \n"
 
   if [[ -n "$SKEL_DIR_ROLL_UP_IT" && -d "$SKEL_DIR_ROLL_UP_IT" ]]; then
@@ -116,7 +112,7 @@ prepareSkel_SM_RUI() {
 }
 
 prepareSudoersd_SM_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix enter the \n"
   if [[ -z "$1" ]]; then
     printf "$debug_prefix No user name specified [$1] \n"
@@ -161,7 +157,7 @@ fi
 #: arg1 - pwd
 #:
 createAdmUser_SM_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix Enter the \n"
   printf "$debug_prefix [$1] parameter #1 \n"
   printf "$debug_prefix [$2] parameter #1 \n"
@@ -250,7 +246,7 @@ createAdmUser_SM_RUI() {
 #: arg0 - name
 #:
 createSysUser_SM_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix Enter the function [ $FUNCNAME ]\n"
   checkNonEmptyArgs_COMMON_RUI "$1"
 
@@ -278,7 +274,7 @@ createSysUser_SM_RUI() {
 #: arg0 - name
 #:
 createFtpUser_SM_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix Enter the function [ $FUNCNAME ]\n"
   checkNonEmptyArgs_COMMON_RUI "$1"
 
@@ -303,7 +299,7 @@ createFtpUser_SM_RUI() {
 #: args0 - user
 #:
 kickUser_SM_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local rc=0
   local errs=""
   printf "$debug_prefix Enter the function \n"
@@ -336,7 +332,7 @@ kickUser_SM_RUI() {
 #: arg0 - user
 #:
 rmUser_SM_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local rc=0
   local errs=""
   printf "$debug_prefix Enter the function \n"
@@ -365,17 +361,39 @@ rmUser_SM_RUI() {
 }
 
 installDefPkgSuit_SM_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  local -r pkg_list=("sudo" "git" "tcpdump" "wget" "lsof" "net-tools")
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
+  local -r pkg_list=("sudo" "git" "tcpdump" "wget" "lsof" "net-tools" "curl")
+  yum update --exclude=kernel* && yum -yq upgrade 
   installPkgList_COMMON_RUI pkg_list ""
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
+}
+
+installAdditions_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
+
+  local -r cmd_list=(
+    "install_python3_7_INSTALL_RUI"
+    "install_tmux_INSTALL_RUI"
+    "install_vim8_INSTALL_RUI"
+    "install_ntp_INSTALL_RUI"
+    "install_grc_INSTALL_RUI"
+    "install_bgp_INSTALL_RUI"
+    "install_golang_INSTALL_RUI"
+    "install_vim_shfmt_INSTALL_RUI"
+  )
+  runCmdListInBackground_COMMON_RUI cmd_list
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
 
 #
 # arg0 - locale name
 #
 setLocale_SM_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
   if [ -z "$1" ]; then
@@ -400,7 +418,7 @@ prepareSSH_SM_RUI() {
 }
 
 installEpel_SM_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the ${END_ROLLUP_IT} \n"
 
   local rc=0

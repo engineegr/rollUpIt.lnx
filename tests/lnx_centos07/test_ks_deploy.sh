@@ -20,11 +20,12 @@ function main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  local -r user="likhobabin_im"
-  local pwd="SUPER"
+  local -r user="gonzo"
+  local pwd=""
 
-  yum -yq upgrade 
-  rollUpIt_SM_RUI "$user" "$pwd" "yes_def_install"
+  installDefPkgSuit_SM_RUI
+  installAdditions_SM_RUII
+  prepareUser_SM_RUI "$user" "$pwd" 
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }

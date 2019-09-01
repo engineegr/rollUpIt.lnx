@@ -65,11 +65,6 @@ installPkg_COMMON_RUI() {
     exit $rc;
   fi
 
-  if [ "$2" = "q" ]; then	
-    yum -qy update
-  else
-    yum -y update
-  fi
   rc=$?
   if [ $rc -ne 0 ]; then
     printf "$RED_ROLLUP_IT $debug_prefix Error: can't update yum: error code - $rc $END_ROLLUP_IT\n" >&2
@@ -83,28 +78,28 @@ installPkg_COMMON_RUI() {
     return $rc
   fi
 
-    # Use quotes to safe format!!!
-    if [ -n "$(echo "$res" | grep -e '^Repo[ ]*: installed.*')" ]; then
-      printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] has been already installed $END_ROLLUP_IT\n"
-      return $rc      
-    else
-      printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] is not installed $END_ROLLUP_IT\n"
-    fi
+  # Use quotes to safe format!!!
+  if [ -n "$(echo "$res" | grep -e '^Repo[ ]*: installed.*')" ]; then
+    printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] has been already installed $END_ROLLUP_IT\n"
+    return $rc      
+  else
+    printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] is not installed $END_ROLLUP_IT\n"
+  fi
 
-    if [ "$2" = "q" ]; then
-      res=$(yum -qy install $1)
-    else    
-      res=$(yum -y install $1)
-    fi
-    rc=$?
-    if [ $rc -ne 0 ]; then
-      printf "$RED_ROLLUP_IT $debug_prefix Error [yum]: can't install pkg, error code:[$rc]; error msg:[$res] $END_ROLLUP_IT\n" >&2
-      return $rc
-    else
-      printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] has been successfully installed $END_ROLLUP_IT\n"
-      return $rc 
-    fi
-  }
+  if [ "$2" = "q" ]; then
+    res=$(yum -y -q install $1)
+  else    
+    res=$(yum -y install $1)
+  fi
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "$RED_ROLLUP_IT $debug_prefix Error [yum]: can't install pkg, error code:[$rc]; error msg:[$res] $END_ROLLUP_IT\n" >&2
+    return $rc
+  else
+    printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] has been successfully installed $END_ROLLUP_IT\n"
+    return $rc 
+  fi
+}
 
 checkNonEmptyArgs_COMMON_RUI() {
   declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
@@ -163,12 +158,12 @@ checkIfType_COMMON_RUI() {
 
 #
 # arg1 - package list
-# arg2 - quiet or not 
+# arg2 - additional parameters
 #
 installPkgList_COMMON_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local rc=0
-  local isQuiet="${2:-"q"}"
+  local params="${2-:""}"
 
   if [ -z $1 ]; then
     printf "${RED_ROLLUP_IT} $debug_prefix Error: Empty requried params passed ${END_ROLLUP_IT} \n" >&2
@@ -180,14 +175,25 @@ installPkgList_COMMON_RUI() {
     printf "${RED_ROLLUP_IT} $debug_prefix Error: Passsed package list  is not ARRAY ${END_ROLLUP_IT} \n" >&2
     rc=255
     exit $rc;
-  fi  
+  fi
 
-  declare -a __pkg_list=$1[@]
-
-  for i in "${!__pkg_list}"; do
-    printf "$debug_prefix ${GRN_ROLLUP_IT} Info install pkg [$i] ${END_ROLLUP_IT}\n"
-    installPkg_COMMON_RUI "$i" "$isQuiet"
+  eval "local pkg_list=\${$1[0]}"
+  eval "local len=\${#$1[*]}"
+  for (( i=1; i<$len; i++ )) do
+    eval "local v=\${$1[$i]}"
+    pkg_list="$pkg_list $v"
   done
+
+  local exec_str="yum -y $params install $pkg_list"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Executive str: $exec_str${END_ROLLUP_IT}\n"
+
+  eval "$exec_str"
+
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: yum installation failed ${END_ROLLUP_IT} \n" >&2
+    exit $rc;
+  fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
   return $?
@@ -380,7 +386,7 @@ runCmdListInBackground_COMMON_RUI() {
 
   declare -a pid_list=()
   declare -a __pkg_list=$1[@]
-  local -r start_tm="$(date +%H%M_%Y%m)"
+  local -r start_tm="$(date +%H%M_%Y%m%S)"
   local -r log_dir="$ROOT_DIR_ROLL_UP_IT/log/$FUNCNAME"
   local count=0
   local rc=0;
@@ -459,14 +465,14 @@ checkCmndResult_COMMON_RUI() {
   for stderr_fl in $log_dir/${ind}*${start_tm}@stderr.log; do 
     if [ -n "$(cat ${stderr_fl})" ]; then
       printf "${RED_ROLLUP_IT} $debug_prefix Error: command failed [$cmd_name] ${END_ROLLUP_IT}\n" >&2
-      printf "${RED_ROLLUP_IT} See details: \n $(cat ${stderr_fl}) ${END_ROLLUP_IT}\n" >&2
+      echo "${RED_ROLLUP_IT} See details: \n $(cat ${stderr_fl}) ${END_ROLLUP_IT}\n" >&2
       # if we use 'set -o errexit' 'return' will exits parent shell!!!
       ([[ $fq == "y" ]] && exit 1)  || return 255
     else
       return 0
-    fi
-  done 
+      fi
+    done 
 
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
-  return $?
-}
+    printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+    return $?
+  }
