@@ -383,7 +383,7 @@ runCmdListInBackground_COMMON_RUI() {
   local -r start_tm="$(date +%H%M_%Y%m)"
   local -r log_dir="$ROOT_DIR_ROLL_UP_IT/log/$FUNCNAME"
   local count=0
-
+  local rc=0;
   mkdir -p $log_dir
 
   set +o errexit # unless we will not able to detect error in the cild processes
@@ -392,7 +392,7 @@ runCmdListInBackground_COMMON_RUI() {
     local rcmd_name=$(extractCmndName_COMMON_RUI $rcmd)
     printf "$debug_prefix ${GRN_ROLLUP_IT} CMD name: [${rcmd_name}] ${END_ROLLUP_IT}\n"
 
-    eval $rcmd 2>"${log_dir}/${count}:${rcmd_name}@${start_tm}@stderr.log" 1>"${log_dir}/${count}:${rcmd_name}@${start_tm}@stdout.log" & 
+    $rcmd 2>"${log_dir}/${count}:${rcmd_name}@${start_tm}@stderr.log" 1>"${log_dir}/${count}:${rcmd_name}@${start_tm}@stdout.log" & 
 
     pid_list+=("${count}:<${rcmd}>:$!")
 
@@ -403,15 +403,19 @@ runCmdListInBackground_COMMON_RUI() {
     local __epid="$(echo $__pid | cut -d":" -f3)"
     local __cmd_name="$(echo $__pid | cut -d":" -f2)"
 
-    printf "${GRN_ROLLUP_IT} Debug: Cmd [$__pid] is running ... ${END_ROLLUP_IT}\n"
+    printf "${GRN_ROLLUP_IT}\nDebug: Cmd [$__pid] is running ... ${END_ROLLUP_IT}\n"
     printf "${GRN_ROLLUP_IT} Debug: PID [$__epid] ${END_ROLLUP_IT}\n"
     printf "${GRN_ROLLUP_IT} Debug: Cmd name [$__cmd_name] ${END_ROLLUP_IT}\n"
 
     wait ${__epid}
 
     checkCmndResult_COMMON_RUI "${log_dir}" "${__pid}" "${start_tm}" ""
-
-    printf "${GRN_ROLLUP_IT} Debug: Cmd [__pid] is done"
+    rc=$?
+    if [ $rc -eq 0 ]; then
+      printf "${GRN_ROLLUP_IT} Debug: Cmd [$__pid] is done successfully\n${END_ROLLUP_IT}"
+    else
+      printf "${RED_ROLLUP_IT} Debug: Cmd [$__pid] FAILED\n${END_ROLLUP_IT}" >&2 
+    fi
   done
   set -o errexit # unless we will not able to detect error in the cild processes
 
@@ -456,7 +460,10 @@ checkCmndResult_COMMON_RUI() {
     if [ -n "$(cat ${stderr_fl})" ]; then
       printf "${RED_ROLLUP_IT} $debug_prefix Error: command failed [$cmd_name] ${END_ROLLUP_IT}\n" >&2
       printf "${RED_ROLLUP_IT} See details: \n $(cat ${stderr_fl}) ${END_ROLLUP_IT}\n" >&2
-      [[ $fq == "y" ]] && exit 1 
+      # if we use 'set -o errexit' 'return' will exits parent shell!!!
+      ([[ $fq == "y" ]] && exit 1)  || return 255
+    else
+      return 0
     fi
   done 
 
