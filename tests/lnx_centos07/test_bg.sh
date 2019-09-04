@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -o errexit
-# set -o xtrace
+set -o xtrace
 set -o nounset
 
 # exec 2>std.log
@@ -15,15 +15,12 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/dhcp_srv.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
 
-function main() {
+main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-  # local -r cmd_list=("install_bgp_INSTALL_RUI" "du -d 1 -h -BM --exclude 'proc' / 2>/dev/null" "yum -y update" "ls -la")
-  local -r cmd_list=("install_vim_shfmt_INSTALL_RUI")
-  
-  # install_golang_INSTALL_RUI
-  # local -r cmd_list=("yum -y update")
-  runCmdListInBackground_COMMON_RUI cmd_list
+
+  local -r cmd="yum -y group install \"Development Tools\""
+  runInBackground_COMMON_RUI "$cmd"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }

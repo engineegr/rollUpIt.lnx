@@ -23,7 +23,7 @@
 help_DHCPSRV_RUI() {
   echo "Usage: " >&2
   echo "-i installation" >&2
-  echo "-d deploy configuration" >&2 
+  echo "-d deploy configuration" >&2
   echo "-h : show help" >&2
   echo "-c file_path: common paratmeters" >&2
   echo "-s file_path: subnet parameters" >&2
@@ -488,7 +488,7 @@ checkConfig_DHCPSRV_RUI() {
   local err_str="$(dhcpd -t -cf "$cfg_fp" 2>&1 >>"logs/test_dhcpsrv.log")"
   if [ -n "$err_str" ]; then
     printf "$debug_prefix ${RED_ROLLUP_IT} Error: invalid configuration [err_str]: $err_str \nSee help${END_ROLLUP_IT}\n" >&2
-#    exit 1
+    #    exit 1
   fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
@@ -499,8 +499,8 @@ deployCfg_DHCPSRV_RUI() {
   local -r root_dhcpd_cfg="/etc/dhcp/dhcpd.conf"
   local -r dhcpd_cfg="resources/dhcp-srv/dhcpd.conf"
 
-  sudo systemctl stop dhcpd 
-  sudo systemctl daemon-reload 
+  sudo systemctl stop dhcpd
+  sudo systemctl daemon-reload
 
   sudo mv "$root_dhcpd_cfg" "${root_dhcpd_cfg}.orig"
   sudo cp "$dhcpd_cfg" "/etc/dhcp/"
