@@ -274,60 +274,6 @@ getSudoUser_COMMON_RUI() {
   echo "$([[ -n "$SUDO_USER" ]] && echo "$SUDO_USER" || echo "$(whoami)")"
 }
 
-to_begin_COMMON_RUI() {
-  tput cup 0 0
-  return $?
-}
-
-to_end_COMMON_RUI() {
-  let __x=$(tput lines)-1
-  let __y=$(tput cols)-1
-  tput cup $__y $__x
-  return $?
-}
-
-#:
-#: Set cursor to a specific position: y;x
-#: arg1 - x
-#: arg2 - y
-#:
-to_yx_COMMON_RUI() {
-  local -r __xmax=$(tput cols)
-  local -r __ymax=$(tput lines)
-  local -r __x=$1
-  local -r __y=$2
-
-  #  if [[ $__x -gt $__xmax || $__y -gt $__ymax ]]; then
-  #    printf "$debug_prefix ${RED_ROLLUP_IT} Error incorrect arguments [$__x, $__y] xmax [$__xmax]; ymax[$__ymax] ${END_ROLLUP_IT} \n" >&2
-  #    return 255
-  #  fi
-
-  tput cup $__y $__x
-
-  return $?
-}
-
-colrow_pos_COMMON_RUI() {
-  local CURPOS
-  read -sdR -p $'\E[6n' CURPOS
-  CURPOS=${CURPOS#*[} # Strip decoration characters <ESC>[
-  echo "${CURPOS}"    # Return position in "row;col" format
-}
-
-#:
-#: Get current cursor position: number of columns
-#:
-cpos_x_COMMON_RUI() {
-  echo $(colrow_pos_COMMON_RUI) | cut -d";" -f 2
-}
-
-#:
-#: Get current cursor position: number of lines
-#:
-cpos_y_COMMON_RUI() {
-  echo $(colrow_pos_COMMON_RUI) | cut -d";" -f 1
-}
-
 #:
 #: Run a command in background
 #: args - running command with arguments
@@ -391,12 +337,13 @@ runCmdListInBackground_COMMON_RUI() {
   declare -a __pkg_list=$1[@]
   local chld_cmd="NA"
 
-  local -r start_tm="$(date +%H%M_%Y%m%S)"
+  local start_tm="$(date +%H%M_%Y%m%S)"
   CHLD_STARTTM_COMMON_RUI="${start_tm}"
 
-  local -r log_dir="$ROOT_DIR_ROLL_UP_IT/log/$FUNCNAME"
+  local log_dir="$ROOT_DIR_ROLL_UP_IT/log/$FUNCNAME"
   CHLD_LOG_DIR_COMMON_RUI="${log_dir}"
 
+  local test="var001"
   declare -i count=0
   declare -i rc=0
   mkdir -p $log_dir
@@ -445,29 +392,42 @@ extractCmndName_COMMON_RUI() {
 #: arg0 - return code of the last command
 #: arg1 - line number
 #: arg2 - command name
-#: arg4 - call when the signal was trapped
+#: arg4 - command which is a reason of the interruption
 #:
 onInterruption_COMMON_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
+  #  local param_array="$*"
+  #  for i in "${param_array[@]}"; do
+  #    echo "Param: $i "
+  #  done
+
+  echo "Param 1: $1"
+  echo "Param 2: $2"
+  echo "Param 3: $3"
+  echo "Param 4: $4"
   # <interruption_cmd> <rc> <line> <last_command>
-  local -r __last_call="$4"
-  local -r __rc="$(echo ${__last_call} | cut -d' ' -f2)"
-  local -r __err_code_line="$(echo ${__last_call} | cut -d' ' -f3)"
-  local -r __err_cmd="$(echo ${__last_call} | cut -d' ' -f4)"
+  local __last_call="$4"
+  echo "Param 4: $__last_call"
+  local __bn="$(echo ${__last_call} | cut -d' ' -f1)"
+  local __rc="$(echo ${__last_call} | cut -d' ' -f2)"
+  local __err_line="$(echo ${__last_call} | cut -d' ' -f3)"
+  local __err_cmd="${__last_call##"${__bn} ${__rc} ${__err_line}"}"
+
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} Info: last call [$__last_call]\n RC [$__rc]\n Code line: [$__err_line]\n Last command: [$__err_cmd]${END_ROLLUP_IT} \n"
 
   if [[ ${__rc} -ne 0 ]]; then
-    onErrorInterruption_COMMON_RUI "${__err_code_line}" "${__err_cmd}"
+    onErrorInterruption_COMMON_RUI "${__err_line}" "${__err_cmd}"
   fi
   resetChldBgCommandList_COMMON_RUI
 
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }
 
 resetChldBgCommandList_COMMON_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   local chld_cmd=""
   local epid=""
@@ -484,12 +444,12 @@ resetChldBgCommandList_COMMON_RUI() {
   done
 
   resetGlobalMarkers_COMMON_RUI
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }
 
 resetGlobalMarkers_COMMON_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   WAIT_CHLD_CMD_IND_COMMON_RUI="-1"
   CHLD_LOG_DIR_COMMON_RUI="NA"
@@ -499,7 +459,7 @@ resetGlobalMarkers_COMMON_RUI() {
     unset CHLD_BG_CMD_LIST_COMMON_RUI[i]
   done
 
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }
 
 #:
@@ -509,24 +469,24 @@ resetGlobalMarkers_COMMON_RUI() {
 #: arg1 - command name
 #:
 onErrorInterruption_COMMON_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  printf "$debug_prefix ${RED_ROLLUP_IT} $(basename $0)  caught error on line : $1 command was: $2 ${END_ROLLUP_IT}"
+  printf "${__debug_prefix} ${RED_ROLLUP_IT} $(basename $0)  caught error on line : $1 command was: $2 ${END_ROLLUP_IT}"
   # more info if the error reason in child process
   if [[ $WAIT_CHLD_CMD_IND_COMMON_RUI -ge 0 ]]; then
-    local -r ind="$WAIT_CHLD_CMD_IND_COMMON_RUI"
-    local -r chld_cmd="${CHLD_BG_CMD_LIST_COMMON_RUI[$ind]}"
-    local -r epid="$(echo ${chld_cmd} | sed -E 's/^([[:digit:]]*)\:<.*>$/\1/')"
+    local __ind="$WAIT_CHLD_CMD_IND_COMMON_RUI"
+    local __chld_cmd="${CHLD_BG_CMD_LIST_COMMON_RUI[${__ind}]}"
+    local __epid="$(echo ${__chld_cmd} | sed -E 's/^([[:digit:]]*)\:<.*>$/\1/')"
 
-    if [[ "$(isProcessRunning_COMMON_RUI $epid)" != "true" ]]; then
+    if [[ "$(isProcessRunning_COMMON_RUI ${__epid})" != "true" ]]; then
       displayBgChldErroLog_COMMON_RUI
     fi
   else
-    printf "${MAG_ROLLUP_IT} $debug_prefix INFO: The interruption has happened before/after the beginning of a background child ${END_ROLLUP_IT}\n" >&2
+    printf "\n${MAG_ROLLUP_IT} $debug_prefix INFO: The interruption has happened before/after the beginning of a background child ${END_ROLLUP_IT}\n" >&2
   fi
 
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
 #:
@@ -535,32 +495,32 @@ onErrorInterruption_COMMON_RUI() {
 #: arg0 - pid
 #:
 isProcessRunning_COMMON_RUI() {
-  declare -r epid="$1"
+  declare -r __epid="$1"
   declare -i rc=0
 
-  kill -0 "$epid" 2>/dev/null
+  kill -0 "${__epid}" 2>/dev/null
   rc=$?
   [[ $rc -eq 0 ]] && echo "true" || echo "false"
 }
 
 displayBgChldErroLog_COMMON_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  local -r log_dir="$CHLD_LOG_DIR_COMMON_RUI"
-  local -r ind="$WAIT_CHLD_CMD_IND_COMMON_RUI"
-  local -r cmd_name="$(echo "${CHLD_BG_CMD_LIST_COMMON_RUI[$ind]}" | sed -E 's/^[[:digit:]]*\:(<.*>)$/\1/')"
-  local -r start_tm="$CHLD_STARTTM_COMMON_RUI"
-  local -r stderr_fl="$log_dir/${ind}:${cmd_name}@${start_tm}@stderr.log"
+  local __log_dir="$CHLD_LOG_DIR_COMMON_RUI"
+  local __ind="$WAIT_CHLD_CMD_IND_COMMON_RUI"
+  local __cmd_name="$(echo "${CHLD_BG_CMD_LIST_COMMON_RUI[${__ind}]}" | sed -E 's/^[[:digit:]]*\:(<.*>)$/\1/')"
+  local __start_tm="$CHLD_STARTTM_COMMON_RUI"
+  local __stderr_fl="${__log_dir}/${__ind}:${__cmd_name}@${__start_tm}@stderr.log"
 
-  printf "$debug_prefix ${GRN_ROLLUP_IT} Command Index: $ind ${END_ROLLUP_IT} \n"
-  printf "$debug_prefix ${GRN_ROLLUP_IT} Command Descriptor: ${CHLD_BG_CMD_LIST_COMMON_RUI[$ind]} ${END_ROLLUP_IT} \n"
-  printf "$debug_prefix ${GRN_ROLLUP_IT} Command name: ${cmd_name} ${END_ROLLUP_IT} \n"
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} Command Index: ${__ind} ${END_ROLLUP_IT} \n"
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} Command Descriptor: ${CHLD_BG_CMD_LIST_COMMON_RUI[${__ind}]} ${END_ROLLUP_IT} \n"
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} Command name: ${__cmd_name} ${END_ROLLUP_IT} \n"
 
-  if [[ -e ${stderr_fl} && -n $(cat ${stderr_fl}) ]]; then
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: command failed [$cmd_name] ${END_ROLLUP_IT}\n" >&2
-    echo "${RED_ROLLUP_IT} See details: \n $(cat ${stderr_fl}) ${END_ROLLUP_IT}\n" >&2
+  if [[ -e ${__stderr_fl} && -n $(cat ${__stderr_fl}) ]]; then
+    printf "${RED_ROLLUP_IT} ${__debug_prefix} Error: command failed [${__cmd_name}] ${END_ROLLUP_IT}\n" >&2
+    echo "${RED_ROLLUP_IT} See details: \n $(cat ${__stderr_fl}) ${END_ROLLUP_IT}\n" >&2
   fi
 
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }

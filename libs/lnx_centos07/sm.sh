@@ -21,7 +21,7 @@ prepareUser_SM_RUI() {
   local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
   if [[ -z "$isExist" ]]; then
     printf "$debug_prefix The user doesn't exist \n"
-    createAdmUser_SM_RUI "$1" "$2" ""
+    createAdmUser_SM_RUI "$1" "$2"
   else
     printf "$debug_prefix The user exists. Copy skel config \n"
   fi
@@ -31,11 +31,18 @@ prepareUser_SM_RUI() {
 
   # see https://unix.stackexchange.com/questions/269078/executing-a-bash-script-function-with-sudo
   # __FUNC=$(declare -f skeletonUserHome; declare -f onErrors_SM_RUI)
-  __FUNC_SKEL=$(declare -f skeletonUserHome)
+  __FUNC_SKEL=$(declare -f skeletonUserHome_SM_RUI)
   __FUNC_ONERRS=$(declare -f onErrors_SM_RUI)
+  __FUNC_INS_SHFMT=$(declare -f install_vim_shfmt_INSTALL_RUI)
 
-  sudo -u "$1" sh -c "$__FUNC_SKEL;$__FUNC_ONERRS;skeletonUserHome $1"
-  install_bgp_INSTALL_RUI "$home_dir"
+  sudo -u "$1" sh -c "source $ROOT_DIR_ROLL_UP_IT/libs/addColors.sh; \      
+    source $ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh; \
+                       source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/addVars.sh; \
+                       source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh; \
+                       source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh; \
+                       source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh; \
+                       $__FUNC_SKEL; $__FUNC_ONERRS; $__FUNC_INS_SHFMT; \
+                       skeletonUserHome_SM_RUI $1"
 
   setLocale_SM_RUI "ru_RU.utf8"
   prepareSSH_SM_RUI
@@ -44,7 +51,7 @@ prepareUser_SM_RUI() {
 #
 # arg0 - username
 #
-skeletonUserHome() {
+skeletonUserHome_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix enter the \n"
   printf "$debug_prefix [$1] parameter #1 \n"
@@ -53,24 +60,35 @@ skeletonUserHome() {
   local -r isExist="$(getent passwd | cut -d : -f1 | egrep "$username")"
   local rc=""
 
-  export PATH="$PATH:/usr/local/bin"
-
   if [[ -z "$isExist" ]]; then
     onErrors_SM_RUI "$debug_prefix The user doesn't exist"
     exit 1
   fi
 
-  local user_home_dir="/home/$username"
+  export PATH="$PATH:/usr/local/bin"
+
+  local -r user_home_dir="/home/$username"
+  install_vim_shfmt_INSTALL_RUI "${user_home_dir}"
+  install_bgp_INSTALL_RUI "${user_home_dir}"
+
   [[ "$username" == "root" ]] && user_home_dir="/root"
 
-  cd "$user_home_dir"
-  # git clone -b develop https://github.com/gonzo-soc/dotfiles "$user_home_dir/.dotfiles" && rcup -fv && rcup -fv -t vim -t tmux 2> "$user_home_dir/stream_error.log"
-  git clone -b develop https://github.com/gonzo-soc/dotfiles "$user_home_dir/.dotfiles" && rcup -fv -t tmux -t vim 2>"$user_home_dir/stream_error.log"
-  rc="$?"
-
-  if [ "$rc" -ne 0 ]; then
-    onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
-    exit 1
+  if [[ ! -d "${user_home_dir}/.dotfiles" ]]; then
+    cd "$user_home_dir"
+    git clone -b develop https://github.com/gonzo-soc/dotfiles "$user_home_dir/.dotfiles"
+    rc="$?"
+    if [ "$rc" -ne 0 ]; then
+      onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
+      exit 1
+    fi
+    rcup -fv -t tmux -t vim
+    rc="$?"
+    if [ "$rc" -ne 0 ]; then
+      onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
+      exit 1
+    fi
+  else
+    printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
   fi
 }
 
@@ -107,7 +125,7 @@ prepareSkel_SM_RUI() {
 
 prepareSudoersd_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix enter the \n"
+  printf "$debug_prefix enter \n"
   if [[ -z "$1" ]]; then
     printf "$debug_prefix No user name specified [$1] \n"
     exit 1
@@ -156,16 +174,16 @@ createAdmUser_SM_RUI() {
   printf "$debug_prefix Enter the \n"
   printf "$debug_prefix [$1] parameter #1 \n"
 
-  local errs=""
-  local -r user_name="${1:-"gonzo"}"
-  local -r pwd="${2:-""}"
-  local to_match="${3:-false}"
+  if [[ -n "$1" && -n "$2" ]]; then
+    local rc=0
+    local errs=""
+    local -r user_name="${1:-"gonzo"}"
+    local -r pwd="${2:-"$6$0sxMqcpiAjgc3lmt$jNw78O11HuXwCl6s0hMy2CpNjmxq1QUfLiNM4M4SjIzGXkPsIWJBa56dNuue1kUPsZmA69Uf2YEHUgp.WjaWI."}"
 
-  if [[ -e stream_error.log ]]; then
-    echo "" >stream_error.log
-  fi
+    if [[ -e stderr.log ]]; then
+      echo "" >stderr.log
+    fi
 
-  if [[ -n "$user_name" ]]; then
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
     if [[ -n "$isExist" ]]; then
       printf "$debug_prefix The user exists \n"
@@ -173,62 +191,59 @@ createAdmUser_SM_RUI() {
     fi
 
     printf "debug: [ $0 ] There is no [ $user_name ] user, let's create him \n"
-    # adduser $1 --gecos "$1" --disabled-password 2>stream_error.log
-    adduser "$user_name" 2>stream_error.log
-    if [[ -e stream_error.log ]]; then
-      errs="$(cat stream_error.log)"
-    fi
-
-    if [[ -n "$errs" ]]; then
+    # adduser $1 --gecos "$1" --disabled-password 2>stderr.log
+    adduser "$user_name" 2>stderr.log
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      errs="$(cat stderr.log)"
       printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ $errs ]${END_ROLLUP_IT}" >&2
       exit 1
+    fi
+
+    echo "$user_name:$pwd" | chpasswd -e 2>stderr.log
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      errs="$(cat stderr.log)"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n" >&2
+      userdel -r $user_name
+      exit 1
+    fi
+
+    chage -d 0 "$user_name" 2>stderr.log
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      errs="$(cat stderr.log)"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set expired password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n" >&2
+      userdel -r $user_name
+      exit 1
+    fi
+
+    local -r isWheel=$(getent group | cut -d : -f1 | grep wheel)
+    local -r isDevelop=$(getent group | cut -d : -f1 | grep develop)
+
+    if [[ -n "$isWheel" ]]; then
+      printf "$debug_prefix Add the user to "wheel" groups \n"
+      usermod -aG wheel $user_name 2>stderr.log
+      rc=$?
+      if [[ $rc -ne 0 ]]; then
+        errs="$(cat stderr.log)"
+        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to wheel group. See details: [ $errs ]${END_ROLLUP_IT} \n" >&2
+        exit 1
+      fi
     else
-      if [ -z "$pwd" ]; then
-        chage -d 0 "$user_name"
-      else
-        echo "$user_name:$pwd" | chpasswd 2>stream_error.log 1>stdout.log
-        if [[ -e stream_error.log ]]; then
-          errs="$(cat stream_error.log)"
-        fi
+      printf "$debug_prefix There is no "wheel" group \n"
+      printf "$debug_prefix "isWheel" [ $isWheel ] \n"
+      exit 1
+    fi
 
-        if [[ -n "$errs" ]]; then
-          printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n" >&2
-          userdel -r $user_name
-
-          exit 1
-        fi
-
-        chage -d 0 "$user_name" 2>stream_error.log 1>stdout.log
-        if [[ -e stream_error.log ]]; then
-          errs="$(cat stream_error.log)"
-        fi
-
-        if [[ -n "$errs" ]]; then
-          printf "${RED_ROLLUP_IT} $debug_prefix Error: can't expire  password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n" >&2
-          userdel -r $user_name
-
-          exit 1
-        fi
-
-        local isSudo=$(getent group | cut -d : -f1 | grep sudo)
-        local isWheel=$(getent group | cut -d : -f1 | grep wheel)
-
-        if [[ -n "$isSudo" && -n "$isWheel" ]]; then
-          printf "$debug_prefix Add the user to "sudo" and "wheel" groups \n"
-          usermod -aG wheel,sudo $user_name
-        elif [[ -n "$isSudo" ]]; then
-          printf "$debug_prefix Add the user to "sudo" group ONLY \n"
-
-          groupadd wheel
-          usermod -aG sudo,wheel $user_name
-        elif [[ -n "$isWheel" ]]; then
-          printf "$debug_prefix Add the user to "wheel" group ONLY: run installDefPkgSuit  \n"
-          usermod -aG wheel $user_name
-        elif [[ ! -n "$isSudo" && ! -n "isWheel" ]]; then
-          printf "$debug_prefix There is no "wheel", no "sudo" group \n"
-          printf "$debug_prefix "isWheel" [ $isWheel ], "isSudo" [ $isSudo ] \n"
-          exit 1
-        fi
+    if [[ -n "$isDevelop" ]]; then
+      printf "$debug_prefix Add the user to "develop" group ONLY: run installDefPkgSuit  \n"
+      usermod -aG develop $user_name 2>stderr.log
+      rc=$?
+      if [[ $rc -ne 0 ]]; then
+        errs="$(cat stderr.log)"
+        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to develop group. See details: [ $errs ]${END_ROLLUP_IT} \n" >&2
+        exit 1
       fi
     fi
   else
@@ -244,7 +259,7 @@ createAdmUser_SM_RUI() {
 createSysUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix Enter the function [ $FUNCNAME ]\n"
-  checkNonEmptyArgs_COMMON_RUI "$1"
+  checkNonEmptyArgs_COMMON_RUI "$@"
 
   local user_name="$1"
   local passwd=""
@@ -272,7 +287,7 @@ createSysUser_SM_RUI() {
 createFtpUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix Enter the function [ $FUNCNAME ]\n"
-  checkNonEmptyArgs_COMMON_RUI "$1"
+  checkNonEmptyArgs_COMMON_RUI "$@"
 
   local -r ftp_user="$1"
 
@@ -383,18 +398,14 @@ installSpecPkgs_SM_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
   local -r deps_list=(
-    "install_error001"
     "install_python3_7_INSTALL_RUI"
     "install_golang_INSTALL_RUI"
-    "install_loop001"
   )
 
   local -r cmd_list=(
     "install_tmux_INSTALL_RUI"
     "install_vim8_INSTALL_RUI"
-    "install_ntp_INSTALL_RUI"
     "install_grc_INSTALL_RUI"
-    "install_vim_shfmt_INSTALL_RUI"
     "install_rcm_INSTALL_RUI"
   )
 
@@ -433,4 +444,72 @@ prepareSSH_SM_RUI() {
 
   sed -i "0,/.*PermitRootLogin.*$/ s/.*PermitRootLogin.*/PermitRootLogin no/g" $daemon_cfg
   sed -i "0,/.*PubkeyAuthentication.*$/ s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" $daemon_cfg
+}
+
+findBin_SM_RUI() {
+  if [ -z "$1" ]; then
+    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Empty argument ${END_ROLLUP_IT}"
+    exit 1
+  fi
+  local -r cmd="$1"
+  echo -n "$(find /usr -regex ".*bin/$cmd" 2>/dev/null)"
+}
+
+#:
+#: Summ here all base settings
+#:
+baseSetup_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  setupNtpd_SM_RUI
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+#:
+#: Setup ntp
+#:
+setupNtpd_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  systemctl stop ntpd
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't stop ntpd with [systemctl stop ntpd]. Exit. ${END_ROLLUP_IT} \n"
+    exit 1
+  fi
+  timedatectl set-timezone "Asia/Sakhalin"
+  systemctl enable ntpd
+
+  if [[ ! -e /etc/ntp.conf.orig ]]; then
+    # comment existing ntp-servers
+    sed -i -E 's/^(server [[:digit:]].*ntp\.org.*)$/#\1/' /etc/ntp.conf
+
+    cp -f "/etc/ntp.conf" "/etc/ntp.conf.orig"
+    cat <<EOF >>/etc/ntp.conf
+# Use public servers from the pool.ntp.org project
+server 0.ru.pool.ntp.org iburst      
+server 1.ru.pool.ntp.org iburst      
+server 2.ru.pool.ntp.org iburst      
+server 3.ru.pool.ntp.org iburst
+EOF
+  fi
+
+  ntpd -qa
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't synchronize time with [ntpd -qa]. Exit. ${END_ROLLUP_IT} \n"
+    exit 1
+  fi
+
+  systemctl start ntpd
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't start ntpd with [systemctl start ntpd]. Exit. ${END_ROLLUP_IT} \n"
+    exit 1
+  fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }

@@ -36,7 +36,7 @@ install_grc_INSTALL_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  if [[ -n "$(which grc)" || -n "$(which grcat)" ]]; then
+  if [[ -e "/usr/local/bin/grc" && -e "/usr/local/bin/grc" ]]; then
     printf "$debug_prefix ${CYN_ROLLUP_IT} grc has been already installed ${END_ROLLUP_IT} \n"
   else
     cd /usr/local/src
@@ -55,10 +55,8 @@ install_grc_INSTALL_RUI() {
 install_bgp_INSTALL_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function; $1 ${END_ROLLUP_IT} \n"
-  printf "$debug_prefix ${GRN_ROLLUP_IT} [parent_pid]: $$ ${END_ROLLUP_IT} \n"
-  printf "$debug_prefix ${GRN_ROLLUP_IT} [current_pid]: $BASHPID ${END_ROLLUP_IT} \n"
 
-  checkNonEmptyArgs_COMMON_RUI "$1"
+  checkNonEmptyArgs_COMMON_RUI "$@"
   local -r home_dir="$1"
   local -r user_name="${home_dir##*/}"
 
@@ -67,8 +65,6 @@ install_bgp_INSTALL_RUI() {
   else
     cd $home_dir
     git clone https://github.com/magicmonty/bash-git-prompt.git .bash-git-prompt --depth=1
-    chown -Rf "$user_name":"$user_name" .bash-git-prompt
-
     printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
   fi
 }
@@ -87,7 +83,7 @@ install_golang_INSTALL_RUI() {
     if [ -d "$tmp_dir" ]; then
       rm -Rf "$tmp_dir"
     fi
-
+    mkdir "${tmp_dir}"
     cd $tmp_dir
 
     wget https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz 2>&1
@@ -102,55 +98,38 @@ install_golang_INSTALL_RUI() {
 
 #:
 #: Install a module for .sh formatting
+#: arg0 - home_dir
 #:
 install_vim_shfmt_INSTALL_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  checkNonEmptyArgs_COMMON_RUI "$@"
+  local -r home_dir="$1"
+  local -r go_path=$(findBin_SM_RUI "go")
 
-  if [[ ! -e "/usr/local/go/bin/go" ]]; then
+  if [[ -z "${go_path}" ]]; then
     printf "$debug_prefix ${RED_ROLLUP_IT} No go lang installed ${END_ROLLUP_IT} \n"
     return 255
   else
-    if [[ -x shfmt ]]; then
+    local -r shfmt_path="$(find "${home_dir}" -regex ".*bin/shfmt" 2>/dev/null)"
+    if [[ -n "${shfmt_path}" ]]; then
       printf "$debug_prefix ${CYN_ROLLUP_IT} shfmt has already been installed ${END_ROLLUP_IT} \n" >&2
     else
       local -r tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX --tmpdir=/tmp)
-      mkdir "${tmp_dir}"
       if [ -d "$tmp_dir" ]; then
         rm -Rf "$tmp_dir"
       fi
+      mkdir "${tmp_dir}"
 
       cd $tmp_dir
-      go mod init tmp 2>&1
-      go get mvdan.cc/sh/v3/cmd/shfmt 2>&1
+      ${go_path} mod init tmp
+      ${go_path} get mvdan.cc/sh/v3/cmd/shfmt
 
-      rm -Rf $tmp_dir
+      # rm -Rf $tmp_dir
 
       printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
     fi
   fi
-}
-
-#:
-#: Install ntp
-#:
-install_ntp_INSTALL_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  cat <<EOF >>/etc/ntp.conf
-# Use public servers from the pool.ntp.org project
-server 0.ru.pool.ntp.org       
-server 1.ru.pool.ntp.org       
-server 2.ru.pool.ntp.org       
-server 3.ru.pool.ntp.org 
-EOF
-
-  systemctl enable ntpd
-  ntpd -gq
-  systemctl start ntpd
-
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
 #:
@@ -193,10 +172,6 @@ install_tmux_INSTALL_RUI() {
     make
     make install
 
-    # pkill tmux
-    # close your terminal window (flushes cached tmux executable)
-    # open new shell and check tmux version
-    tmux -V
     rm -rf $tmp_dir
 
     printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
@@ -296,38 +271,19 @@ install_rcm_INSTALL_RUI() {
 
     mkdir ${tmp_dir}
     cd ${tmp_dir}
-
-    curl -LO https://thoughtbot.github.io/rcm/dist/rcm-1.3.3.tar.gz &&
-      sha=$(sha256 rcm-1.3.3.tar.gz | cut -f1 -d' ') &&
-      [ "$sha" = "935524456f2291afa36ef815e68f1ab4a37a4ed6f0f144b7de7fb270733e13af" ] &&
-      tar -xvf rcm-1.3.3.tar.gz &&
-      cd rcm-1.3.3 &&
-      ./configure &&
-      make &&
+    curl -LO https://thoughtbot.github.io/rcm/dist/rcm-1.3.3.tar.gz
+    local -r sha=$(sha256sum rcm-1.3.3.tar.gz | cut -f1 -d' ')
+    if [ "$sha" = "935524456f2291afa36ef815e68f1ab4a37a4ed6f0f144b7de7fb270733e13af" ]; then
+      tar -xvf rcm-1.3.3.tar.gz
+      cd rcm-1.3.3
+      ./configure
+      make
       make install
-
+    else
+      printf "$debug_prefix \n ${RED_ROLLUP_IT} Error: RCM download FAILED ${END_ROLLUP_IT} \n"
+      exit 1
+    fi
     rm -Rf ${tmp_dir}
-
     printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
   fi
-}
-
-install_error001() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  sha256
-
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
-}
-
-install_loop001() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  while true; do
-    printf "$debug_prefix ${GRN_ROLLUP_IT} Cmd is running ...  ${END_ROLLUP_IT} \n"
-  done
-
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }

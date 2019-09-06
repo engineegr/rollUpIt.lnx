@@ -11,23 +11,18 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/addVars.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sysmon.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/dhcp_srv.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
 
 trap "onInterruption_COMMON_RUI $? $LINENO $BASH_COMMAND" ERR EXIT SIGHUP SIGINT SIGTERM SIGQUIT RETURN
 
 main() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  # cr_usage_SYSMON_RUI | tee logs/$(date +%H%M_%d%m%Y)_sysusage_SYSMON_RUI.log
-  local_drive_usage_SYSMON_RUI | tee logs/$(date +%H%M_%d%m%Y)_sysusage_SYSMON_RUI.log
+  sed -i -E 's/^(server [[:digit:]].*ntp\.org.*)$/#\1/' tests/lnx_centos07/base/ntp.conf
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  exit 0
 }
 
 main $@
