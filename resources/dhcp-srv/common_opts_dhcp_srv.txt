@@ -1,0 +1,9 @@
+interface:enp0s3
+domain-name:linux.labs.local
+opt_router:172.16.0.1
+opt_broadcast:172.16.1.255
+opt_subnetmask:255.255.254.0
+default-lease:600
+max-lease-time:7200
+ns1:8.8.8.8
+ns2:8.8.4.4

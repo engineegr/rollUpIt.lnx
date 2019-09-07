@@ -1,52 +1,61 @@
 #!/bin/bash
 
-isPwdMatching_COMMON_RUI()
-{
-local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-printf "$debug_prefix enter the \n"
-printf "$debug_prefix [$1] parameter #1 \n"
+#:
+#: GLOBAL markers to process background childs
+#:
 
-local passwd="$1"
+WAIT_CHLD_CMD_IND_COMMON_RUI="-1"
+CHLD_LOG_DIR_COMMON_RUI="NA"
+CHLD_STARTTM_COMMON_RUI="NA"
 
-# Regexpression definition
-# special characters
-sch_regexp='^.*[!@#$^\&\*]{1,12}.*$'
-# must be a length
-len_regexp='^.{6,20}$'
-# denied special characters
-denied_sch_regexp='^.*[\s.;:]+.*$'
+declare -a CHLD_BG_CMD_LIST_COMMON_RUI
 
-local isMatching=$2
-declare -i iocal count=0
-if [[ -n $passwd ]]; then
-	if [[ $passwd =~ $len_regexp ]]; then
-		count=count+1
-		printf "$debug_prefix The string [$pwd] ge 6 len \n"
-	else
-		printf "$debug_prefix Start matching \n"
-	fi
-	if [[ $passwd =~ [[:alnum:]] ]]; then
-		((count++))
-		printf "$debug_prefix The string [$pwd] contains alpha-num  \n"
-	fi
-	if [[ $passwd =~ $sch_regexp ]]; then
-		((count++))
-		printf "$debug_prefix The string [$pwd] contains special chars  \n" 
-	fi
-    if  [[ ! $passwd =~ $denied_sch_regexp ]];	then
-		((count++))
-		printf "$debug_prefix The string [$pwd] doesn't contain the denied special chars: [.;:] \n" 
-	fi
-	printf "$debug_prefix Count is $count \n"
-	if [[ $count -eq 4 ]]; then
-		printf "$debug_prefix The string is mathching the regexp \n"
-		eval $isMatching="true"
-    else 
-        printf "$debug_prefix The string is not matching the regexp. Count [$count]\n"
-	fi
-else 
-	printf "$debug_prefix Pwd is empty\n"
-fi
+isPwdMatching_COMMON_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  printf "$debug_prefix enter the \n"
+  printf "$debug_prefix [$1] parameter #1 \n"
+
+  local passwd="$1"
+
+  # Regexpression definition
+  # special characters
+  sch_regexp='^.*[!@#$^\&\*]{1,12}.*$'
+  # must be a length
+  len_regexp='^.{6,20}$'
+  # denied special characters
+  denied_sch_regexp='^.*[\s.;:]+.*$'
+
+  local isMatching=$2
+  declare -i iocal count=0
+  if [[ -n $passwd ]]; then
+    if [[ $passwd =~ $len_regexp ]]; then
+      count=count+1
+      printf "$debug_prefix The string [$pwd] ge 6 len \n"
+    else
+      printf "$debug_prefix Start matching \n"
+    fi
+    if [[ $passwd =~ [[:alnum:]] ]]; then
+      ((count++))
+      printf "$debug_prefix The string [$pwd] contains alpha-num  \n"
+    fi
+    if [[ $passwd =~ $sch_regexp ]]; then
+      ((count++))
+      printf "$debug_prefix The string [$pwd] contains special chars  \n"
+    fi
+    if [[ ! $passwd =~ $denied_sch_regexp ]]; then
+      ((count++))
+      printf "$debug_prefix The string [$pwd] doesn't contain the denied special chars: [.;:] \n"
+    fi
+    printf "$debug_prefix Count is $count \n"
+    if [[ $count -eq 4 ]]; then
+      printf "$debug_prefix The string is mathching the regexp \n"
+      eval $isMatching="true"
+    else
+      printf "$debug_prefix The string is not matching the regexp. Count [$count]\n"
+    fi
+  else
+    printf "$debug_prefix Pwd is empty\n"
+  fi
 }
 
 #
@@ -54,287 +63,464 @@ fi
 # arg1 - quiet or not installation
 #
 installPkg_COMMON_RUI() {
-    local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-    local rc
-    if [ -z $1 ]; then
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: Package name has not been passed ${END_ROLLUP_IT} \n"
-        rc=255
-        exit $rc;
-    fi
-    
-    if [ "$2" = "q" ]; then	
-        yum -qy update
-    else
-        yum -y update
-    fi
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        printf "$RED_ROLLUP_IT $debug_prefix Error: can't update yum: error code - $rc $END_ROLLUP_IT\n"
-        return $rc
-    fi
-    
-    local res="$(yum info $1)"
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        printf "$RED_ROLLUP_IT $debug_prefix Error [yum]: can't get pkg info, error code [$rc]; error msg: [$res]  $END_ROLLUP_IT\n"
-        return $rc
-    fi
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local rc
 
-    # Use quotes to safe format!!!
-    if [ -n "$(echo "$res" | grep -e '^Repo[ ]*: installed.*')" ]; then
-        printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] has been already installed $END_ROLLUP_IT\n"
-        return $rc      
-    else
-       printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] is not installed $END_ROLLUP_IT\n"
-    fi
-    
-    if [ "$2" = "q" ]; then
-        res=$(yum -qy install $1)
-    else    
-        res=$(yum -y install $1)
-    fi
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        printf "$RED_ROLLUP_IT $debug_prefix Error [yum]: can't install pkg, error code:[$rc]; error msg:[$res] $END_ROLLUP_IT\n"
-        return $rc
-    else
-        printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] has been successfully installed $END_ROLLUP_IT\n"
-        return $rc 
-    fi
+  checkNonEmptyArgs_COMMON_RUI "$@"
+
+  if [ -z $1 ]; then
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: Package name has not been passed ${END_ROLLUP_IT} \n" >&2
+    rc=255
+    exit $rc
+  fi
+
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "$RED_ROLLUP_IT $debug_prefix Error: can't update yum: error code - $rc $END_ROLLUP_IT\n" >&2
+    return $rc
+  fi
+
+  local res="$(yum info $1)"
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "$RED_ROLLUP_IT $debug_prefix Error [yum]: can't get pkg info, error code [$rc]; error msg: [$res]  $END_ROLLUP_IT\n" >&2
+    return $rc
+  fi
+
+  # Use quotes to safe format!!!
+  if [ -n "$(echo "$res" | grep -e '^Repo[ ]*: installed.*')" ]; then
+    printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] has been already installed $END_ROLLUP_IT\n"
+    return $rc
+  else
+    printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] is not installed $END_ROLLUP_IT\n"
+  fi
+
+  if [ "$2" = "q" ]; then
+    res=$(yum -y -q install $1)
+  else
+    res=$(yum -y install $1)
+  fi
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "$RED_ROLLUP_IT $debug_prefix Error [yum]: can't install pkg, error code:[$rc]; error msg:[$res] $END_ROLLUP_IT\n" >&2
+    return $rc
+  else
+    printf "$GRN_ROLLUP_IT $debug_prefix Pkg [$1] has been successfully installed $END_ROLLUP_IT\n"
+    return $rc
+  fi
+}
+
+checkNonEmptyArgs_COMMON_RUI() {
+  declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} enter the function ${END_ROLLUP_IT} \n"
+
+  if [ $# -eq 0 ]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: no arguments has been passed.\nSee help: $(help_FLBACKUP_RUI) ${END_ROLLUP_IT}\n" >&2
+    exit 1
+  fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT}\n"
+}
+
+checkNetworkAddr_COMMON_RUI() {
+  if [[ $# -ne 0 && -z $(echo $1 | grep -P $IP_ADDR_REGEXP_ROLLUP_IT) && -z $(echo $1 | grep -P $DOMAIN_REGEXP_ROLLUP_IT) ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Invalid network name of the host: it must be either an ip address or FQDN.\nSee help${END_ROLLUP_IT}\n" >&2
+    exit 1
+  fi
+}
+
+checkIpAddrRange_COMMON_RUI() {
+  if [[ $# -ne 0 && -z $(echo "$1" | grep -P $IP_ADDR_RANGE_REGEXP_ROLLUP_IT) ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Inavlid IP addr range (example, 192.168.0.1-100) ${END_ROLLUP_IT}\n" >&2
+    exit 1
+  fi
 }
 
 #
 # arg1 - verifying variable
 #
-checkIfType() {
-  local var=$( declare -p $1 )
+checkIfType_COMMON_RUI() {
+  local var=$(declare -p $1)
   local reg='^declare -n [^=]+=\"([^\"]+)\"$'
   while [[ $var =~ $reg ]]; do
-    var=$( declare -p ${BASH_REMATCH[1]} )
+    var=$(declare -p ${BASH_REMATCH[1]})
   done
 
   case "${var#declare -}" in
-  a*)
-   echo "ARRAY"
-   ;;
-  A*)
-   echo "HASH"
-   ;;
-  i*)
-   echo "INT"
-   ;;
-  x*)
-   echo "EXPORT"
-   ;;
-  *)
-   echo "OTHER"
-   ;;
+    a*)
+      echo "ARRAY"
+      ;;
+    A*)
+      echo "HASH"
+      ;;
+    i*)
+      echo "INT"
+      ;;
+    x*)
+      echo "EXPORT"
+      ;;
+    *)
+      echo "OTHER"
+      ;;
   esac
 }
 
 #
 # arg1 - package list
-# arg2 - quiet or not 
+# arg2 - additional parameters
 #
 installPkgList_COMMON_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local rc=0
-  local isQuiet="${2:-}"
+  local params="${2-:""}"
+  # Warrning if the outer function passes a ref to variable with the same name as the local var the last one will overlap the external ref
+  local pkgs=""
 
   if [ -z $1 ]; then
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: Empty requried params passed ${END_ROLLUP_IT} \n"
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: Empty requried params passed ${END_ROLLUP_IT} \n" >&2
     rc=255
-    exit $rc;
+    exit $rc
   fi
-  
-  if [ -z "$(checkIfType $1 | egrep "ARRAY")" ]; then
-     printf "${RED_ROLLUP_IT} $debug_prefix Error: Passsed package list  is not ARRAY ${END_ROLLUP_IT} \n"
-    rc=255
-    exit $rc;
-  fi  
- 
-  declare -a __pkg_list=$1[@]
 
-  for i in "${!__pkg_list}"; do
-    printf "$debug_prefix ${GRN_ROLLUP_IT} Info install pkg [$i] ${END_ROLLUP_IT}\n"
-    installPkg_COMMON_RUI "$i" "$isQuiet"
+  if [ -z "$(checkIfType_COMMON_RUI $1 | egrep "ARRAY")" ]; then
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: Passsed package list is not ARRAY ${END_ROLLUP_IT} \n" >&2
+    rc=255
+    exit $rc
+  fi
+
+  eval "pkgs=\${$1[0]}"
+  eval "local len=\${#$1[*]}"
+  for ((i = 1; i < $len; i++)); do
+    eval "local v=\${$1[$i]}"
+    pkgs="$pkgs $v"
   done
+
+  local exec_str="yum -y $params install $pkgs"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Executive str: $exec_str${END_ROLLUP_IT}\n"
+
+  eval "$exec_str"
+
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: yum installation failed ${END_ROLLUP_IT} \n" >&2
+    exit $rc
+  fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
   return $?
 }
 
-# 
+#
 # pf - processing file
 # sf - search field
 # fv - a new field value
 # dm - fields delimeter
 #
 setField_COMMON_RUI() {
-    local debug_prefix="debug: [$0] [ $FUNCNAME[0 ] : "
-    declare -r local pf="$1"
-    declare -r local sf="$2"
-    declare -r local fv="$3"
-    declare -r local dm="$([ -z "$4" ] && echo ": " || echo "$4" )"
-#    echo "$debug_prefix [ dm ] is $dm"
+  local debug_prefix="debug: [$0] [ $FUNCNAME[0 ] : "
+  declare -r local pf="$1"
+  declare -r local sf="$2"
+  declare -r local fv="$3"
+  declare -r local dm="$([ -z "$4" ] && echo ": " || echo "$4")"
+  #    echo "$debug_prefix [ dm ] is $dm"
 
-    if [[ -z "$pf" || -z "$sf" || -z "$fv" ]]; then 
-         printf "{RED_ROLLUP_IT} $debug_prefix Empty passed parameters {END_ROLLUP_IT} \n"
-         exit 1
-    fi
+  if [[ -z "$pf" || -z "$sf" || -z "$fv" ]]; then
+    printf "{RED_ROLLUP_IT} $debug_prefix Empty passed parameters {END_ROLLUP_IT} \n" >&2
+    exit 1
+  fi
 
-    if [[ ! -e "$pf" ]]; then
-        printf "{RED_ROLLUP_IT} $debug_prefix No processing file {END_ROLLUP_IT} \n"
-        exit 1 
-    fi
-    declare -r local replace_str="$sf$dm$fv"
-    sed -i "0,/.*$sf.*$/ s/.*$sf.*$/$replace_str/" $pf
+  if [[ ! -e "$pf" ]]; then
+    printf "{RED_ROLLUP_IT} $debug_prefix No processing file {END_ROLLUP_IT} \n" >&2
+    exit 1
+  fi
+  declare -r local replace_str="$sf$dm$fv"
+  sed -i "0,/.*$sf.*$/ s/.*$sf.*$/$replace_str/" $pf
 }
 
 removePkg_COMMON_RUI() {
-    local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-    if [ -z $1 ]; then
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: Package name has not been passed ${END_ROLLUP_IT} \n"
-        exit 255;
-    fi
+  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  if [ -z $1 ]; then
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: Package name has not been passed ${END_ROLLUP_IT} \n" >&2
+    exit 255
+  fi
 
-    local res=""
-    if [ "$2" = "q" ]; then	
-        res=$(yum -qy update)
-    else
-        res=$(yum update)
-    fi
+  local res=""
+  if [ "$2" = "q" ]; then
+    res=$(yum -y -q update)
+  else
+    res=$(yum update)
+  fi
 
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        printf "$RED_ROLLUP_IT $debug_prefix Error: can't update yum: error code:[$rc]; error msg:[$res] $END_ROLLUP_IT\n"
-        return $rc
-    fi
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "$RED_ROLLUP_IT $debug_prefix Error: can't update yum: error code:[$rc]; error msg:[$res] $END_ROLLUP_IT\n" >&2
+    return $rc
+  fi
 
-    if [ "$2" = "q" ]; then	
-        res=$(yum -qy remove $1)
-    else
-        res=$(yum -y remove $1)
-    fi
+  if [ "$2" = "q" ]; then
+    res=$(yum -y -q remove $1)
+  else
+    res=$(yum -y remove $1)
+  fi
 
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        printf "$RED_ROLLUP_IT $debug_prefix Error: [yum] can't remove pkg: error code:[$rc]; error msg:[$res] $END_ROLLUP_IT\n"
-        return $rc
-    fi
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    printf "$RED_ROLLUP_IT $debug_prefix Error: [yum] can't remove pkg: error code:[$rc]; error msg:[$res] $END_ROLLUP_IT\n" >&2
+    return $rc
+  fi
 }
 
 getSudoUser_COMMON_RUI() {
-    echo "$([[ -n "$SUDO_USER" ]] && echo "$SUDO_USER" || echo "$(whoami)")"
-}
-
-to_begin() {
-    tput cup 0 0
-    return $?
-}
-
-to_end() {
-    let __x=$(tput lines)-1
-    let __y=$(tput cols)-1
-    tput cup $__y $__x
-    return $?
-}
-
-#:
-#: Set cursor to a specific position: y;x
-#: arg1 - x
-#: arg2 - y
-#:
-to_yx() {
-    local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-    printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-    let __xmax=$(tput lines)-1
-    let __ymax=$(tput cols)-1
-    local -r __x=$1
-    local -r __y=$2
-
-    if [[ $__x -gt $__xmax || $__y -gt $__ymax ]]; then
-        printf "$debug_prefix ${RED_ROLLUP_IT} Error incorrect arguments xmax [$__xmax]; ymax[$__ymax] ${END_ROLLUP_IT} \n"
-        return 255
-    fi
-    
-    tput cup $__y $__x
-
-    printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
-    return $?
-}
-
-#:
-#: Get current cursor position: number of columns
-#:
-cpos_x(){
-    printf "$(echo -en "\E[6n";read -sdR CURPOS; CURPOS=${CURPOS#*[};echo "${CURPOS}" | cut -d";" -f 2)"
-}
-
-#:
-#: Get current cursor position: number of lines
-#:
-cpos_y(){
-    printf "$(echo -en "\E[6n";read -sdR CURPOS; CURPOS=${CURPOS#*[};echo "${CURPOS}" | cut -d";" -f 1)"
+  echo "$([[ -n "$SUDO_USER" ]] && echo "$SUDO_USER" || echo "$(whoami)")"
 }
 
 #:
 #: Run a command in background
 #: args - running command with arguments
 #:
-runInBackground(){
-    local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-    printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+runInBackground_COMMON_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-    local -r rcmd=$@
-    let local -r clmns=$(tput lines)-6
-    let local -r end_x=$(tput cols)-3
+  local -r rcmd=$@
 
-    # start command
-    $rcmd 2>&1 1>"$ROOT_DIR_ROLL_UP_IT/logs/$FUNCNAME_$(date +%H%M_%Y%m)_stdout.log" & 
-    
-    local -r rc_pid=$!
-    local i=0
-    local p=0
-    
-    printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command $rcmd ${END_ROLLUP_IT} \n"
-    printf "${MAG_ROLLUP_IT}"
+  # start command
+  eval "$rcmd" &>"$ROOT_DIR_ROLL_UP_IT/log/${FUNCNAME}_$(date +%H%M_%Y%m)_stdout.log" &
+  waitForCmnd_COMMON_RUI $!
 
-    local -r start_y=$(cpos_y)
-    while [ kill -0 $rc_pid ]
-    do
-        if [[ i -gt $clmns || i -eq 0 ]]; then
-            let $start_y++
-            to_yx $start_y $end_x
-            printf " ]"
-            to_yx $start_y 0 
-            printf "[ "
-            i=0
-        fi
+  printf "${END_ROLLUP_IT}"
+  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  return $?
+}
 
-        p=$((i%3))
-        case "$p" in
-            0)
-                printf "||"
-            ;;
-            1)
-                printf "\\"
-            ;;
-            2)
-                printf "//"
-            ;;
-            *)
-                printf "$debug_prefix ${RED_ROLLUP_IT} [$FUNCNAME]:Error Unknown case ${END_ROLLUP_IT} \n"
-                echo
-            ;;
-        esac
+waitForCmnd_COMMON_RUI() {
+  checkNonEmptyArgs_COMMON_RUI $@
 
-        let i++
-        sleep .1
-    done
+  local -r rc_pid=$1
+  local -r cols=$(tput cols)+1
 
-    printf "${END_ROLLUP_IT}"
-    printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
-    return $?
+  printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command $rcmd ${END_ROLLUP_IT} \n"
+  printf "${MAG_ROLLUP_IT}"
+  while kill -0 $rc_pid 2>/dev/null; do
+    printf "!"
+    sleep .1
+  done
+}
+
+#:
+#: Wait a command running in background
+#: arg0 - cmnd_pid
+#: TODO: need to rebuild (tput gives incorrect cursor positions)
+#:
+progressBarForCmnd_COMMON_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  return $?
+}
+
+#:
+#: Run command list in background
+#: arg0 - list of commands
+#:
+runCmdListInBackground_COMMON_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  if [ -z "$(checkIfType_COMMON_RUI $1 | egrep "ARRAY")" ]; then
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: Passsed package list  is not ARRAY ${END_ROLLUP_IT} \n" >&2
+    rc=255
+    exit $rc
+  fi
+
+  declare -a __pkg_list=$1[@]
+  local chld_cmd="NA"
+
+  local start_tm="$(date +%H%M_%Y%m%S)"
+  CHLD_STARTTM_COMMON_RUI="${start_tm}"
+
+  local log_dir="$ROOT_DIR_ROLL_UP_IT/log/$FUNCNAME"
+  CHLD_LOG_DIR_COMMON_RUI="${log_dir}"
+
+  local test="var001"
+  declare -i count=0
+  declare -i rc=0
+  mkdir -p $log_dir
+
+  for rcmd in "${!__pkg_list}"; do
+    local rcmd_name=$(extractCmndName_COMMON_RUI $rcmd)
+
+    printf "$debug_prefix ${GRN_ROLLUP_IT} Run the cmd: [$rcmd] ${END_ROLLUP_IT}\n"
+    printf "$debug_prefix ${GRN_ROLLUP_IT} CMD name: [${rcmd_name}] ${END_ROLLUP_IT}\n"
+
+    eval "$rcmd" 2>"${log_dir}/$count:<${rcmd_name}>@${start_tm}@stderr.log" 1>"${log_dir}/$count:<${rcmd_name}>@${start_tm}@stdout.log" &
+    CHLD_BG_CMD_LIST_COMMON_RUI[$count]="$!:<${rcmd}>"
+
+    # WARRNING! if we use "let count++" let returns zero and it trigers "errexit"
+    let ++count
+  done
+
+  count=0
+  for i in "${!CHLD_BG_CMD_LIST_COMMON_RUI[@]}"; do
+    chld_cmd="${CHLD_BG_CMD_LIST_COMMON_RUI[i]}"
+    local __epid="$(echo ${chld_cmd} | cut -d":" -f1)"
+    local __cmd_name="$(echo ${chld_cmd} | cut -d":" -f2)"
+
+    printf "${GRN_ROLLUP_IT}\nDebug: Cmd [${chld_cmd}] is running ... ${END_ROLLUP_IT}\n"
+    printf "${GRN_ROLLUP_IT} Debug: PID [${__epid}] ${END_ROLLUP_IT}\n"
+    printf "${GRN_ROLLUP_IT} Debug: Cmd name [${__cmd_name}] ${END_ROLLUP_IT}\n"
+
+    WAIT_CHLD_CMD_IND_COMMON_RUI=$count
+    wait ${__epid}
+    let ++count
+  done
+  resetGlobalMarkers_COMMON_RUI
+
+  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  return $?
+}
+
+extractCmndName_COMMON_RUI() {
+  local -r cmnd_name=$(echo "$1" | cut -d" " -f1)
+  echo "${cmnd_name}"
+}
+
+#:
+#: All signals interruption: EXIT ERR HUP INT TERM (see @link: https://mywiki.wooledge.org/SignalTrap):
+#:
+#: arg0 - return code of the last command
+#: arg1 - line number
+#: arg2 - command name
+#: arg4 - command which is a reason of the interruption
+#:
+onInterruption_COMMON_RUI() {
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  #  local param_array="$*"
+  #  for i in "${param_array[@]}"; do
+  #    echo "Param: $i "
+  #  done
+
+  echo "Param 1: $1"
+  echo "Param 2: $2"
+  echo "Param 3: $3"
+  echo "Param 4: $4"
+  # <interruption_cmd> <rc> <line> <last_command>
+  local __last_call="$4"
+  echo "Param 4: $__last_call"
+  local __bn="$(echo ${__last_call} | cut -d' ' -f1)"
+  local __rc="$(echo ${__last_call} | cut -d' ' -f2)"
+  local __err_line="$(echo ${__last_call} | cut -d' ' -f3)"
+  local __err_cmd="${__last_call##"${__bn} ${__rc} ${__err_line}"}"
+
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} Info: last call [$__last_call]\n RC [$__rc]\n Code line: [$__err_line]\n Last command: [$__err_cmd]${END_ROLLUP_IT} \n"
+
+  if [[ ${__rc} -ne 0 ]]; then
+    onErrorInterruption_COMMON_RUI "${__err_line}" "${__err_cmd}"
+  fi
+  resetChldBgCommandList_COMMON_RUI
+
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+}
+
+resetChldBgCommandList_COMMON_RUI() {
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  local chld_cmd=""
+  local epid=""
+  for i in "${!CHLD_BG_CMD_LIST_COMMON_RUI[@]}"; do
+    chld_cmd="${CHLD_BG_CMD_LIST_COMMON_RUI[i]}"
+    epid="$(echo ${chld_cmd} | sed -E 's/^([[:digit:]]*)\:<.*>$/\1/')"
+    if [ "$(isProcessRunning_COMMON_RUI $epid)" == "true" ]; then
+      # When the shell receives SIGTERM (or the server exits independently), the wait call will return (exiting with the server's exit code,
+      # or with the signal number + 127 if a signal was received). Afterward, if the shell received SIGTERM,
+      # it will call the _term function specified as the SIGTERM trap handler before exiting (in which we do any cleanup and manually
+      # propagate the signal to the server process using kill). Shortly 'TERM' signal we can catch but 'KILL' - we can't.
+      kill -TERM "$epid"
+    fi
+  done
+
+  resetGlobalMarkers_COMMON_RUI
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+}
+
+resetGlobalMarkers_COMMON_RUI() {
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  WAIT_CHLD_CMD_IND_COMMON_RUI="-1"
+  CHLD_LOG_DIR_COMMON_RUI="NA"
+  CHLD_STARTTM_COMMON_RUI="NA"
+
+  for i in "${!CHLD_BG_CMD_LIST_COMMON_RUI[@]}"; do
+    unset CHLD_BG_CMD_LIST_COMMON_RUI[i]
+  done
+
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+}
+
+#:
+#: Error interruption (ERR signal only): display the error snipet
+#:
+#: arg0 - line number
+#: arg1 - command name
+#:
+onErrorInterruption_COMMON_RUI() {
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  printf "${__debug_prefix} ${RED_ROLLUP_IT} $(basename $0)  caught error on line : $1 command was: $2 ${END_ROLLUP_IT}"
+  # more info if the error reason in child process
+  if [[ $WAIT_CHLD_CMD_IND_COMMON_RUI -ge 0 ]]; then
+    local __ind="$WAIT_CHLD_CMD_IND_COMMON_RUI"
+    local __chld_cmd="${CHLD_BG_CMD_LIST_COMMON_RUI[${__ind}]}"
+    local __epid="$(echo ${__chld_cmd} | sed -E 's/^([[:digit:]]*)\:<.*>$/\1/')"
+
+    if [[ "$(isProcessRunning_COMMON_RUI ${__epid})" != "true" ]]; then
+      displayBgChldErroLog_COMMON_RUI
+    fi
+  else
+    printf "\n${MAG_ROLLUP_IT} $debug_prefix INFO: The interruption has happened before/after the beginning of a background child ${END_ROLLUP_IT}\n" >&2
+  fi
+
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+#:
+#: If the process exists
+#:
+#: arg0 - pid
+#:
+isProcessRunning_COMMON_RUI() {
+  declare -r __epid="$1"
+  declare -i rc=0
+
+  kill -0 "${__epid}" 2>/dev/null
+  rc=$?
+  [[ $rc -eq 0 ]] && echo "true" || echo "false"
+}
+
+displayBgChldErroLog_COMMON_RUI() {
+  local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  local __log_dir="$CHLD_LOG_DIR_COMMON_RUI"
+  local __ind="$WAIT_CHLD_CMD_IND_COMMON_RUI"
+  local __cmd_name="$(echo "${CHLD_BG_CMD_LIST_COMMON_RUI[${__ind}]}" | sed -E 's/^[[:digit:]]*\:(<.*>)$/\1/')"
+  local __start_tm="$CHLD_STARTTM_COMMON_RUI"
+  local __stderr_fl="${__log_dir}/${__ind}:${__cmd_name}@${__start_tm}@stderr.log"
+
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} Command Index: ${__ind} ${END_ROLLUP_IT} \n"
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} Command Descriptor: ${CHLD_BG_CMD_LIST_COMMON_RUI[${__ind}]} ${END_ROLLUP_IT} \n"
+  printf "${__debug_prefix} ${GRN_ROLLUP_IT} Command name: ${__cmd_name} ${END_ROLLUP_IT} \n"
+
+  if [[ -e ${__stderr_fl} && -n $(cat ${__stderr_fl}) ]]; then
+    printf "${RED_ROLLUP_IT} ${__debug_prefix} Error: command failed [${__cmd_name}] ${END_ROLLUP_IT}\n" >&2
+    echo "${RED_ROLLUP_IT} See details: \n $(cat ${__stderr_fl}) ${END_ROLLUP_IT}\n" >&2
+  fi
+
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }

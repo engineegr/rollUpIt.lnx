@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#: 
+#:
 #: sysmon.sh
 #:
 #: It is a collection of functions to monitor state of system
@@ -14,52 +14,51 @@ set -o nounset
 #! arg001 isAlert
 #:
 cr_usage_SYSMON_RUI() {
-    declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-    printf "$debug_prefix enter the function \n"
+  declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix enter the function \n"
 
-    local rc=0
-    local ef=0
-    local -r isAlert="${1:-false}"
+  local rc=0
+  local ef=0
+  local -r isAlert="${1:-false}"
 
-    while [ $ef -ne 1 ]
-    do
-        local res=""
-        get_cr_usage_SYSMON_RUI res
-        if [ $rc -ne 0 ]; then
-          printf "$debug_prefix ${RED_ROLLUP_IT} Error: invalid result of function ${END_ROLLUP_IT}\n"
-        else
-          printf "$debug_prefix ${GRN_ROLLUP_IT} INFO: result of get_cr_usage [$res] ${END_ROLLUP_IT}\n"
-        fi
+  while [ $ef -ne 1 ]; do
+    local res=""
+    get_cr_usage_SYSMON_RUI res
+    if [ $rc -ne 0 ]; then
+      printf "$debug_prefix ${RED_ROLLUP_IT} Error: invalid result of function ${END_ROLLUP_IT}\n"
+    else
+      printf "$debug_prefix ${GRN_ROLLUP_IT} INFO: result of get_cr_usage [$res] ${END_ROLLUP_IT}\n"
+    fi
 
-        local cpu_summ=$(echo $res | cut -d';' -f 1)
-        local mem_summ=$(echo $res | cut -d';' -f 2)
+    local cpu_summ=$(echo $res | cut -d';' -f 1)
+    local mem_summ=$(echo $res | cut -d';' -f 2)
 
-        if [ $isAlert="true" ]; then
-          if (( $(echo "$cpu_summ > 90.0" | bc -l) )); then
-            echo ">>>Alert: CPU usage: $cpu_summ more than 90"
-          else
-            echo ">>>Info: CPU usage is normal"    
-          fi
-          if (( $(echo "$mem_summ > 90.0" | bc -l) )); then
-            echo ">>>Alert: RAM usage: $mem_summ more than 90"
-          else
-            echo ">>>Info: RAM usage is normal"    
-          fi
-        fi
-        
-        echo "[CPU;MEM]: [$cpu_summ;$mem_summ]"
-        sleep 10
+    if [ $isAlert="true" ]; then
+      if (($(echo "$cpu_summ > 90.0" | bc -l))); then
+        echo ">>>Alert: CPU usage: $cpu_summ more than 90"
+      else
+        echo ">>>Info: CPU usage is normal"
+      fi
+      if (($(echo "$mem_summ > 90.0" | bc -l))); then
+        echo ">>>Alert: RAM usage: $mem_summ more than 90"
+      else
+        echo ">>>Info: RAM usage is normal"
+      fi
+    fi
 
-    done
+    echo "[CPU;MEM]: [$cpu_summ;$mem_summ]"
+    sleep 10
 
-    printf "$debug_prefix EXIT the function \n"
+  done
+
+  printf "$debug_prefix EXIT the function \n"
 }
 
 #:
 #: Get RAM/CPU  usage daemon
 #! arg001 return result
 #:
-get_cr_usage_SYSMON_RUI(){
+get_cr_usage_SYSMON_RUI() {
   declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix enter the function \n"
 
@@ -82,14 +81,14 @@ get_cr_usage_SYSMON_RUI(){
 
   eval $__ref="'$__res'"
   printf "$debug_prefix EXIT the function \n"
-return "$?"
+  return "$?"
 }
 
 #:
 #: LOCAL drive usage
 #! arg001 threshold
 #:
-local_drive_usage_SYSMON_RUI(){
+local_drive_usage_SYSMON_RUI() {
   declare -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix enter the function \n"
 
@@ -97,10 +96,9 @@ local_drive_usage_SYSMON_RUI(){
   local ef=0
   local -r threshold="${1:-10}"
 
-  while [ $ef -ne 1 ]
-  do
+  while [ $ef -ne 1 ]; do
     local res=""
-    
+
     res="$(df -hl | awk -v th="$threshold" '
     BEGIN {
       res_str="";
@@ -129,4 +127,3 @@ local_drive_usage_SYSMON_RUI(){
 
   printf "$debug_prefix EXIT the function \n"
 }
-

@@ -2,7 +2,7 @@
 # set -o errexit
 # set -o xtrace
 set -o nounset
-set -o errtrace
+# set -o errtrace
 
 ROOT_DIR_ROLL_UP_IT="/usr/local/src/rollUpIt.lnx"
 
