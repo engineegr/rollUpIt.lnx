@@ -5,11 +5,11 @@
 
 1. ##### IPSec basics
 
-- Security Associations: algorithm of encryption, authentication keys and another security method to implement secured connection, it defines our secure policy tha is offered to opposite side;
+- **Security Associations**: algorithm of encryption, authentication keys and another security method to implement secured connection, it defines our secure policy tha is offered to opposite side;
 
-- Transform set: define enc alg and HMAC function for protection our data, also we set an encryption mode: transport or tunnel via transform set options;
+- **Transform set**: define enc alg and HMAC function for protection our data, also we set an encryption mode: transport or tunnel via transform set options;
 
-- Crypto map: bridge between ACLs, transform set and source of data (interfaces), so that bring it together to protect data;
+- **Crypto map**: bridge between ACLs, transform set and source of data (interfaces), so that bring it together to protect data;
 
 2. ##### Secure associations.
     *Main purpose*: exchange and keep tracks of security settings, define **Authentication Header** and **Encapsulating Security Payload** (ESP)
@@ -191,6 +191,69 @@
 
 11. ##### Configuration ex.002. IPSec over DMVPN
     
+    0. About DMVPN.
+    
+    *How NHRP and NBMA Networks Interact?*
+
+    Most WAN networks are a collection of point-to-point links. Virtual tunnel networks (for example Generic Routing Encapsulation (GRE) tunnels) are also a collection of point-to-point links. To effectively scale the connectivity of these point-to-point links, they are usually grouped into a single or multilayer hub-and-spoke network. Multipoint interfaces (for example, GRE tunnel interfaces) can be used to reduce the configuration on a hub router in such a network. This resulting network is a **Non-Broadcast Multi-Access (NBMA)** network.
+
+    Because there are multiple tunnel endpoints reachable through the single multipoint interface, **there needs to be a mapping from the logical tunnel endpoint IP address to the physical tunnel endpoint IP address in order to forward packets out the multipoint GRE (mGRE) tunnel interfaces over this NBMA network. This mapping could be statically configured, but it is preferable if the mapping can be discovered or learned dynamically.**
+
+    NHRP is an **ARP-like protocol** that alleviates these NBMA network problems. With NHRP, systems attached to an NBMA network dynamically learn the NBMA address of the other systems that are part of that network, allowing these systems to directly communicate without requiring traffic to use an intermediate hop.
+
+    Routers, access servers, and hosts **can use NHRP to discover the addresses of other routers and hosts connected to an NBMA network**. Partially meshed NBMA networks typically have **multiple logical networks** behind the NBMA network. In such configurations, **packets traversing the NBMA network might have to make several hops over the NBMA network before arriving at the exit router** (the router nearest the destination network). When NHRP is combined with IPsec, the NBMA network is basically a collection of point-to-point logical tunnel links over a physical IP network.
+
+    NHRP allows two functions to help support these NBMA networks:
+
+    - NHRP Registration. **NHRP allows Next Hop Clients (NHCs) to dynamically register with Next Hop Servers (NHSs)**. This registration function **allows the NHCs to join the NBMA network without configuration changes on the NHSs**, especially in cases where the NHC has a **dynamic physical IP** address or is **behind a Network Address Translation (NAT)** router that dynamically changes the physical IP address. In these cases, it would be impossible to preconfigure the logical virtual private network (VPN IP) to physical (NBMA IP) mapping for the NHC on the NHS. 
+    
+    - NHRP Resolution. **NHRP allows one NHC (spoke) to dynamically discover the logical VPN IP to physical NBMA IP mapping for another NHC (spoke) within the same NBMA network**. Without this discovery, IP packets traversing from hosts behind one spoke to hosts behind another spoke would have to traverse by way of the NHS (hub) router. This process would increase the utilization of the hub’s physical bandwidth and CPU to process these packets that enter and exit the hub on the multipoint interface. **With NHRP, systems attached to an NBMA network dynamically learn the NBMA address of the other systems that are part of that network, allowing these systems to directly communicate without requiring traffic to use an intermediate hop.** This function alleviates the load on the intermediate hop (NHS) and can increase the overall bandwidth of the NBMA network to be greater than the bandwidth of the hub router.
+
+    *How the Hub-to-Spokes NBMA is built?*
+
+    With NHRP, the NBMA network is initially laid out as a hub-and-spoke network that can be multiple hierarchical layers of NHCs as spokes and NHSs as hubs. *The NHCs are configured with static mapping information to reach their NHSs and will connect to their NHS and send an NHRP registration to the NHS*. This configuration allows the NHS to dynamically learn the mapping information for the spoke, reducing the configuration needed on the hub and allowing the spoke to obtain a dynamic NBMA (physical) IP address.
+
+    Once the base hub-and-spoke network is dynamically built, *NHRP resolution requests and responses can be used to dynamically discover spoke-to-spoke mapping information, which allows spokes to bypass the hub and contact each other directly.* This process allows a dynamic mesh of connections between spokes to be built based on data traffic patterns without requiring a preconfigured static fully meshed network. Using a dynamic-mesh network allows smaller spoke routers to participate up to their capability in a large NBMA network when these smaller spoke routers do not have the resources to participate in a full mesh on the same size network. The smaller spoke routers do not need to build out all possible spoke-to-spoke links; these routers need to build only the ones they are currently using.
+
+    *How a node make selection of the next-hop server to pass packets through?*
+    NHRP resolution requests traverse **one or more hops (hubs)** within the base hub-and-spoke NBMA subnetwork before reaching the station that is expected to generate a response. Each station (including the source station) chooses a neighboring NHS to which it forwards the request. The NHS selection procedure typically involves performing a routing decision based upon the network layer destination address of the NHRP request. The NHRP resolution request eventually arrives at a station that generates an NHRP resolution reply. **This responding station either serves the destination, or is the destination itself.** The responding station generates a reply using the source address from within the NHRP packet to determine where the reply should be sent.
+
+    ![Next Hop Resolution Protocol in action](https://www.cisco.com/c/dam/en/us/td/i/200001-300000/200001-210000/203001-204000/203825.eps/_jcr_content/renditions/203825.jpg "Next Hop Resolution Protocol in action")
+
+    Description: The figure below illustrates four routers connected to an NBMA network. Within the network are IP routers necessary for the routers to communicate with each other by tunneling the IP data packets in GRE IP tunnel packets. The infrastructure layer routers support logical IP tunnel circuit connections represented by hops 1, 2, and 3. When router A attempts to forward an IP packet from the source host to the destination host, NHRP is triggered. On behalf of the source host, router A sends an NHRP resolution request packet encapsulated in a GRE IP packet, which takes three hops across the network to reach router D, connected to the destination host. After router A receives a positive NHRP resolution reply, router A determines that router D is the NBMA IP next hop, and router A sends subsequent data IP packets for the destination to router D in one GRE IP tunnel hop.
+
+    *What the nhrp holdtime is used for?*
+
+    NHRP registrations are sent from NHCs to their configured NHSs every **one-third** of the **NHRP holdtime** (configured by the `ip nhrp holdtime value` command), unless the ip nhrp registration timeout value command is configured, in which case registrations are sent out according to the configured timeout value. If an NHRP registration reply **is not received** for an NHRP registration request, the NHRP registration request **is retransmitted at timeouts of 1, 2, 4, 8, 16, 32, and 64 seconds**, then the sequence starts over again at 1.
+
+    The NHS is declared down if an NHRP registration reply is not received after three retransmission (7 seconds), and an NHRP resolution packets will no longer be sent to or by way of that NHS.
+
+    *Finally: How DMVPN Hub-to-Spokes works?*
+
+    Spoke-to-spoke tunnels are designed **to be dynamic**, in that they are created only when there is data traffic to use the tunnel and they are **removed when there is no longer any data traffic using the tunnel.**
+    NHRP provides capability to spokes to build a shortcut switched virtual circuit (SVC) over a switched infrastructure network (Frame Relay and ATM) directly to another NHC (spoke), bypassing hops through the NHSs (hubs). This capability allows the building of very large NHRP NBMA networks. In this way, the bandwidth and CPU limitations of the hub do not limit the overall bandwidth of the NHRP NBMA network. This capability effectively creates a full-mesh-capable network without having to discover all possible connections beforehand. This type of network is called a **dynamic-mesh network**, where there is a base hub-and-spoke network of NHCs and NHSs for transporting NHRP and dynamic routing protocol information (and data traffic) and dynamic direct spoke-to-spoke links that are built when there is data traffic to use the link and torn down when the data traffic stops.
+
+    *How to build spoke-to-spoke interconnection?*
+
+    1. Phase 1 is the **hub-and-spoke** capability only.
+    2. Phase 2 adds **spoke-to-spoke** capability
+
+    The IP routing table and the routes learned by way of the hub are important when building spoke-to-spoke tunnels. Therefore, the availability of the NHSs (hubs) is critical for the functioning of an NHRP-based network. When there is only one hub and that hub goes down, the spoke removes the routes that it learned from the hub from its routing table, because it lost the hub as its routing neighbor. However, the spoke does not delete any of the spoke-to-spoke tunnels (NHRP mappings) that are now up. **Even though the spoke-to-spoke tunnel is still there the spoke will not be able to use the tunnel because its routing table no longer has a route to the destination network.** The spoke has a path (spoke-to-spoke tunnel), but does not know to use it (because there is no routing table entry).
+
+    In phase 2, if there still happened to be a route in the routing table (could be a static route) with the correct **IP next hop**, then the spoke could still use the spoke-to-spoke tunnel even when the hub is down. NHRP will not be able to refresh the mapping entry because the NHRP resolution request or response would need to go through the hub.
+
+    If you have two (or more) NHS hubs within a single NBMA network (single mGRE, Frame Relay, or ATM interface), then when the first (primary) hub goes down, the spoke router will still remove the routes from the routing table that it learned from this hub, but it will also be learning the same routes (higher metric) from the second (backup) hub, so it will immediately install these routes. Therefore the spoke-to-spoke traffic would continue going over the spoke-to-spoke tunnel and **be unaffected by the primary hub outage**.
+
+    When a data packet is forwarded, it obtains the outbound interface and the IP next hop from the matching routing table network entry. If the NHRP interface is the outbound interface, it looks for an NHRP mapping entry for that IP next hop. If there is no matching of an NHRP mapping entry, then NHRP is triggered to send an NHRP resolution request to get the mapping information (IP next-hop address to physical layer address).
+
+    *About static IP-to-NBMA Address mapping*
+
+    To enable **IP multicast and broadcast** packets to be sent to the statically configured station, use the ip nhrp map multicast nbma-addresscommand. This command is required on multipoint GRE tunnels and not required on point-point RE tunnels.
+
+    To participate in NHRP, a station connected to an NBMA network must be configured with the IP and NBMA addresses of its NHSs. **The format of the NBMA address depends on the medium you are using.** For example, GRE uses a network service access point (NSAP) address, Ethernet uses a MAC address, and SMDS uses an E.164 address.
+
+    >[!Links]
+    >1. [IP Addressing: NHRP Configuration Guide, Cisco IOS XE Release 3S](https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/ipaddr_nhrp/configuration/xe-3s/nhrp-xe-3s-book/config-nhrp.html#GUID-8EF63494-4FAA-4926-A67C-40D71FBBF9B6)
 
     1. Phase 001.
     
@@ -256,6 +319,85 @@
                  tunnel protection ipsec profile TS_LAN_DMVPN_DES_PROFILE
                 end
         The main point here is `ip ospf network broadcast`.
+
+11. ##### Configuration ex.002. IPSec over DMVPN: add IPv6
+
+    1. **Hub**
+    ```
+    interface Tunnel1234
+     ip address 10.102.102.1 255.255.255.240
+     no ip redirects
+     ip mtu 1400
+     ip hold-time eigrp 1 35
+     no ip next-hop-self eigrp 1
+     no ip split-horizon eigrp 1
+     ip nat inside
+     ip nhrp map multicast dynamic
+     ip nhrp network-id 1111
+     ip nhrp holdtime 300
+     ip virtual-reassembly in
+     ip ospf network broadcast
+     ip ospf priority 255
+     ip ospf 1 area 0
+     ipv6 address FD00:AB00:7:1::1/64
+     ipv6 mtu 1400
+     ipv6 eigrp 110
+     ipv6 hold-time eigrp 110 35
+     no ipv6 next-hop-self eigrp 110
+     no ipv6 split-horizon eigrp 110
+     ipv6 nhrp map multicast dynamic
+     ipv6 nhrp network-id 110
+     ipv6 nhrp holdtime 300
+     keepalive 25 3
+     tunnel source Ethernet0/0.2
+     tunnel mode gre multipoint
+     tunnel protection ipsec profile TS_LAN_DMVPN_DES_PROFILE
+
+    ipv6 router eigrp 110
+     no shutdown
+    ```
+
+    2. **Spoke**
+    ```
+    interface Tunnel1234
+     ip address 10.102.102.2 255.255.255.240
+     no ip redirects
+     ip mtu 1400
+     ip hold-time eigrp 1 35
+     no ip next-hop-self eigrp 1
+     no ip split-horizon eigrp 1
+     ip nhrp map 10.102.102.1 188.113.0.1
+     ip nhrp map multicast 188.113.0.1
+     ip nhrp network-id 1111
+     ip nhrp holdtime 300
+     ip nhrp nhs 10.102.102.1
+     ip ospf network broadcast
+     ip ospf priority 0
+     ip ospf 1 area 0
+     !
+     ipv6 address FD00:AB00:7:1::101/64
+     ipv6 mtu 1400
+     !
+     ipv6 eigrp 110
+     ipv6 hold-time eigrp 110 35
+     no ipv6 next-hop-self eigrp 110
+     no ipv6 split-horizon eigrp 110
+     !
+     ipv6 nhrp nhs FD00:AB00:7:1::1
+     ipv6 nhrp map FD00:AB00:7:1::1/64 188.113.0.1
+     ipv6 nhrp map multicast 188.113.0.1
+     ipv6 nhrp network-id 110
+     ipv6 nhrp holdtime 300
+     keepalive 25 3
+     tunnel source FastEthernet0/0.3
+     tunnel mode gre multipoint
+     tunnel protection ipsec profile TS_LAN_DMVPN_DES_PROFILE
+    !
+    !
+    ipv6 router eigrp 110
+     no shutdown
+    ```
+
 >[Notes!]
 > 1) **IOS Configuration Note**: With Cisco IOS 12.2(13)T and later codes (higher numbered T-train codes, 12.3 and later codes) the configured IPSEC "crypto map" only needs to be applied to the physical interface and is no longer required to be applied on the GRE tunnel interface. Having the "crypto map" on the physical and tunnel interface when using the 12.2.(13)T and later codes still works. However, it is highly recommended to apply it just on the physical interface.
 > 2) **TODO**: [NAT behind GRE](https://www.cisco.com/c/en/us/support/docs/security-vpn/ipsec-negotiation-ike-protocols/14137-ipsecgrenat.html) 
@@ -271,3 +413,5 @@
 > 8) [IPsec over DMVPN](http://www.ciscopress.com/articles/article.asp?p=2803868&seqNum=4)
 > 9) [IPSec profile and DMVPN](https://learningnetwork.cisco.com/thread/42089)
 > 10) [DMVPN and OSPF](https://learningnetwork.cisco.com/thread/117838)
+> 11) [IP Addressing: NHRP Configuration Guide, Cisco IOS XE Release 3S](https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/ipaddr_nhrp/configuration/xe-3s/nhrp-xe-3s-book/config-nhrp.html#GUID-8EF63494-4FAA-4926-A67C-40D71FBBF9B6)
+> 12) [IPv6 over existing IPv4 DMVPN cloud](https://community.cisco.com/t5/security-documents/ipv6-over-existing-ipv4-dmvpn-cloud/ta-p/3116734)

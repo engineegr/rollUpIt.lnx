@@ -42,6 +42,13 @@
 		> [!NOTE] In these commands, % gives the name of the current file, %:p 
 		> gives its full path, and %:p:h gives its directory (the "head" of the full path).
  
+ 	10. Seach in text
+	In normal mode, move the cursor to any word. Press * to search forwards for the next occurrence of that word, or press # to search backwards.
+
+	Using * (also <kMultiply>, <S-LeftMouse>) or # (also <S-RightMouse>) searches for the exact word at the cursor (searching for rain would not find rainbow).
+
+	Use g* or g# if you don't want to search for the exact word.
+	
 2. #### Indenting
  	1. Turn on the plugin 
  		
@@ -55,10 +62,17 @@
 
  			set shifwwidth=4
 
- 	4. On pressing tab, insert 4 spaces	
- 			
- 			set epandtab
- 
+ 	4. Smart intend:
+
+ 			set smartindent
+
+>[!Notes]
+>autoindent essentially tells vim to apply the indentation of the current line to the next (created by pressing enter in insert mode or with O or o in normal mode.
+> 
+> smartindent reacts to the syntax/style of the code you are editing (especially for C). When having it on you also should have autoindent on.
+> 
+> :help autoindent also mentions two alternative settings: cindent and indentexpr, both of which make vim ignore the value of smartindent.
+
 3. #### How to work with windows
 
 	1. To create Hor Windows: *Ctrl+W, S (upper case)* 
@@ -82,6 +96,11 @@
 	12. To increase a window to its maximum width: *Ctrl-w |.*
 	13. *Control+W* followed by *W* to toggle between open windows and,
 	14. *Control+W* followed by *H/J/K/L* to move to the left/bottom/top/right window accordingly.
+	15. To swap two windows: `<C-w><C-r>`
+	16. To hide a window: 
+		- vertical panels: `<C-w>|`
+		- horizon panels: `<C-w>_`
+		- to restore: `<C-w>=`
 
 4. #### [How to use registry](https://stackoverflow.com/questions/1497958/how-do-i-use-vim-registers)?
 
@@ -316,11 +335,18 @@
 
 11. ##### Work with vim-Explorer
 
-11.1 Copy a file:
-- mark the destination dir: point to '.'(current dir), and press `mt`;
-- mark the destination file: `mf` (`mF` - unmark);
-- paste the file with `cmc` (if we use `mc` it generates the error **"tried using g:netrw_localcopycmd<cp>; it doesn't work!"**).
+	11.1 Copy a file:
+	- mark the destination dir: point to '.'(current dir), and press `mt`;
+	- mark the destination file: `mf` (`mF` - unmark);
+	- paste the file with `cmc` (if we use `mc` it generates the error **"tried using g:netrw_localcopycmd<cp>; it doesn't work!"**).
+	- 
+12. ##### Some tips
 
+- Open, save, exit: `vim -c "wq" $file`
+
+- How to pass keys on **au**: `au VimEnter *.sh * execute "normal gg=G"`
+
+- Open a file via pipe: `vim "$(locate updatedb | head -1)"`
 
 
 

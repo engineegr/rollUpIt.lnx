@@ -64,6 +64,10 @@
     5. To track a remote branch we need to checkout it from a remote rep: so that by default our local *master* branch is pointed to remote *origin/master*. Also we can redirect a local branch to track another remote branch: `git checkout -b [branch] [remotename]/[branch]`
     
     6. To delete a remote branch: `git push origin :develop`
+    7. To clone a specific remote branch: `git clone --single-branch --branch <branchname> <remote-repo>`
+    8. To show local branches and connected to them branches: `git remote show origin`
+    9. To stash all the local changes: `git reset --hard`
+
 
 5. ##### How to fetch a specific folder only?
 
@@ -74,6 +78,10 @@ $ git fetch <remote> <branch>
 $ git checkout <remote>/<branch> -- relative/path/to/file/or/dir
 the file/dir should now be in your branch and added to the index.
 ```
+
+6. ##### Git caveats
+
+In an effort to fool you into thinking that it manages files’ permissions as well as their contents, Git shows you file modes when adding new files to the repository. It’s lying; Git does not track modes, owners, or modification times. But it tracks the executable bit.
 
 >[!Links]
 > 1. [Remote branches](https://git-scm.com/book/en/v1/Git-Branching-Remote-Branches)

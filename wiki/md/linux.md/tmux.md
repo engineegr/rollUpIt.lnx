@@ -76,7 +76,19 @@ cd ..
 tmux -V
 ```
 
+6. ##### [Inner and outer session in tmux](https://www.freecodecamp.org/news/tmux-in-practice-local-and-nested-remote-tmux-sessions-4f7ba5db8795/)
 
+7. ##### Select a text
+
+Assuming your prefix key is C-a:
+
+- Go to the copy mode: `C-a [`
+- Move the middle of a line
+- Press `C-v`
+- Press `Space`
+- Move the selection with `jkhl`
+- Once you are happy with your selection press `Enter` (or y if you have the binding in your conf file).
+- You can paste the latest copy buffer by: `C-a ]`
 
     
     

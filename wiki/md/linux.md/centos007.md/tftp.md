@@ -1,17 +1,17 @@
 #### TFTP
 ---------
 
-1. [Implementation tftp.socket - 001 - w/o xnitd](https://linuxhint.com/install_tftp_server_centos7/)
+1. [Implementation tftp.socket - 001 - w/o xnetd](https://linuxhint.com/install_tftp_server_centos7/)
 
-2. [Implementation tftp.socket - 001 - with use of xnitd](http://www.cyberphoton.com/tftp-server-in-rhel7/) 
+2. [Implementation tftp.socket - 001 - with use of xnetd](http://www.cyberphoton.com/tftp-server-in-rhel7/) 
 
 ##### 0000. FAQ
 
-3. **xinitd**
+3. **xinetd**
 
 It is a wrapper that provides access to a set of services: when a client host attempts to connect to a network service controlled by xinetd , the super service receives the request and checks for any TCP wrappers access control rules. If access is allowed, xinetd verifies that the connection is allowed under its own access rules for that service and that the service is not consuming more than its allotted amount of resources or in breach of any defined rules. It then starts an instance of the requested service and passes control of the connection to it. Once the connection is established, xinetd does not interfere further with communication between the client host and the server.
 
-4. [How to avoid to use `xinitd` with `systemd`](http://0pointer.de/blog/projects/inetd.html)
+4. [How to avoid to use `xinetd` with `systemd`](http://0pointer.de/blog/projects/inetd.html)
 
 As a superserver it listens on an Internet socket on behalf of another service and then activate that service on an incoming connection, thus implementing an **on-demand socket activation system**. This allowed Unix machines with limited resources to provide a large variety of services, without the need to run processes and invest resources for all of them all of the time.
 
@@ -28,7 +28,7 @@ Performance of the **third scheme** is usually not as good: since for each conne
 
 For example, look at ssh socket, it uses the 3d model. We'll focus on SSH, a very common service that is widely installed and used but on the vast majority of machines probably not started more often than 1/h in average (and usually even much less). SSH has supported inetd-style activation since a long time, following the third scheme mentioned above. Since it is started only every now and then and only with a limited number of connections at the same time it is a very good candidate for this scheme as the extra resource cost is negligble: if made socket-activatable SSH is basically free as long as nobody uses it. 
 
-**xinitd** ssh configuration:
+**xinetd** ssh configuration:
 ```
 service ssh {
         socket_type = stream
@@ -83,5 +83,27 @@ sshd@172.31.0.52:22-172.31.0.54:52985.service loaded active running       SSH Pe
 sshd.socket  
 ```
 
+5. About **tftp** user
+To be more secure we can create a system no-shell login user:
+- `adduser -r -s /bin/nologin`
+
+- Edit `tftp.service`:
+
+```
+[Unit]
+Description=Tftp Server
+Requires=tftp.socket
+Documentation=man:in.tftpd
+
+[Service]
+ExecStart=/usr/sbin/in.tftpd -s /var/lib/tftpboot -u tftp
+StandardInput=socket
+
+[Install]
+Also=tftp.socket
+```
+
+- Change ownership to the tftp folder:
+`chown -R tftp:tftp /var/lib/tftpboot`
 
 
