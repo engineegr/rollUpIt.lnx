@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# set -o errexit
-# set -o nounset
-
 #
 # ----- Basic System Management Scripts ------- #
 #
@@ -10,406 +7,509 @@
 #
 # arg0 - username
 # arg1 - password
-# arg2 - install default pckges (yes|no_def_install)
 #
-rollUpIt_SM_RUI()
-{
-    local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-    printf "$debug_prefix enter the \n"
-    printf "$debug_prefix [$1] parameter #1 \n"
-    printf "$debug_prefix [$2] parameter #2 \n"
+prepareUser_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix enter the \n"
+  printf "$debug_prefix [$1] parameter #1 \n"
 
-    declare -r local installDefPkgs="${3:-"no_def_install"}"
-    printf "$debug_prefix [$installDefPkgs] parameter #3 \n"
+  if [[ -z "$1" ]]; then
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: No parameters passed into the ${END_ROLLUP_IT}\n" >&2
+    exit 1
+  fi
 
-    if [[ -z "$1" || -z "$2" ]]; then
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: No parameters passed into the ${END_ROLLUP_IT}\n"
-        exit 1
-    fi
+  local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
+  if [[ -z "$isExist" ]]; then
+    printf "$debug_prefix The user doesn't exist \n"
+    createAdmUser_SM_RUI "$1" "$2"
+  else
+    printf "$debug_prefix The user exists. Copy skel config \n"
+  fi
+  if [[ "$1" != "root" ]]; then
+    prepareSudoersd_SM_RUI "$1"
+  fi
 
-    if [[ "$installDefPkgs" == "yes_def_install" ]]; then
-	    installDefPkgSuit_SM_RUI
-    fi
+  # see https://unix.stackexchange.com/questions/269078/executing-a-bash-script-function-with-sudo
+  # __FUNC=$(declare -f skeletonUserHome; declare -f onErrors_SM_RUI)
+  __FUNC_SKEL=$(declare -f skeletonUserHome_SM_RUI)
+  __FUNC_ONERRS=$(declare -f onErrors_SM_RUI)
+  __FUNC_INS_SHFMT=$(declare -f install_vim_shfmt_INSTALL_RUI)
 
-    local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
-	if [[ -z "$isExist" ]]; then
-		printf "$debug_prefix The user doesn't exist \n"
-	    createAdmUser_SM_RUI $1 $2
-    else
-		printf "$debug_prefix The user exists. Copy skel config \n"
-        skeletonUserHome $1
-	fi
+  sudo -u "$1" sh -c "source $ROOT_DIR_ROLL_UP_IT/libs/addColors.sh; \      
+    source $ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh; \
+                       source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/addVars.sh; \
+                       source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh; \
+                       source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh; \
+                       source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh; \
+                       $__FUNC_SKEL; $__FUNC_ONERRS; $__FUNC_INS_SHFMT; \
+                       skeletonUserHome_SM_RUI $1"
 
-    if [[ ! "$1"="root" ]]; then
-	    prepareSudoersd_SM_RUI $1
-    fi
-
-    setLocale_SM_RUI "ru_RU.UTF-8 UTF-8"
-    prepareSSH_SM_RUI
+  setLocale_SM_RUI "ru_RU.utf8"
+  prepareSSH_SM_RUI
 }
 
 #
 # arg0 - username
 #
-skeletonUserHome() {
-local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-printf "$debug_prefix enter the \n"
-printf "$debug_prefix [$1] parameter #1 \n"
+skeletonUserHome_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix enter the \n"
+  printf "$debug_prefix [$1] parameter #1 \n"
 
-    declare -r local username="$1"
-    declare -r local isExist="$(getent shadow | cut -d : -f1 | grep $username)"
-	
-    if [[ -z "$isExist" ]]; then
-		onErrors_SM_RUI "$debug_prefix The user doesn't exist"
-        exit 1
+  local -r username="$1"
+  local -r isExist="$(getent passwd | cut -d : -f1 | egrep "$username")"
+  local rc=""
+
+  if [[ -z "$isExist" ]]; then
+    onErrors_SM_RUI "$debug_prefix The user doesn't exist"
+    exit 1
+  fi
+
+  export PATH="$PATH:/usr/local/bin"
+
+  local -r user_home_dir="/home/$username"
+  install_vim_shfmt_INSTALL_RUI "${user_home_dir}"
+  install_bgp_INSTALL_RUI "${user_home_dir}"
+
+  [[ "$username" == "root" ]] && user_home_dir="/root"
+
+  if [[ ! -d "${user_home_dir}/.dotfiles" ]]; then
+    cd "$user_home_dir"
+    git clone -b develop https://github.com/gonzo-soc/dotfiles "$user_home_dir/.dotfiles"
+    rc="$?"
+    if [ "$rc" -ne 0 ]; then
+      onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
+      exit 1
     fi
-
-    local user_home_dir="/home/$username"
-    if [[ "$username"="root" ]]; then
-        user_home_dir="/root"
+    rcup -fv -t tmux -t vim
+    rc="$?"
+    if [ "$rc" -ne 0 ]; then
+      onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
+      exit 1
     fi
-
-    rsync -rtvu "$SKEL_DIR_ROLL_UP_IT/" "$user_home_dir"
-    chown -Rf "$username:$username" "$user_home_dir"
+  else
+    printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
+  fi
 }
 
 #
 # arg0 - error msg
 #
 onErrors_SM_RUI() {
-    declare -r local err_msg=$([[ -z "$1" ]] && echo "ERROR!!!" || echo "$1")
-    local errs=""
-    if [[ -e stream_error.log ]]; then
-        errs="$(cat stream_error.log)"
-    fi
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  local -r err_msg=$([[ -z "$1" ]] && echo "ERROR!!!" || echo "$1")
+  local errs=""
+  if [[ -e stream_error.log ]]; then
+    errs="$(cat stream_error.log)"
+  fi
 
-    if [[ -n "$errs" ]]; then
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: $err_msg [ $errs ]${END_ROLLUP_IT}\n"		
-        exit 1;
-    fi
+  if [[ -n "$errs" ]]; then
+    printf "$debug_prefix Error: $err_msg [ $errs ]\n" >&2
+    exit 1
+  fi
 }
 
-prepareSkel_SM_RUI()
-{
-local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-printf "$debug_prefix enter the \n"
+prepareSkel_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix enter the \n"
 
-if [[ -n "$SKEL_DIR_ROLL_UP_IT" && -d "$SKEL_DIR_ROLL_UP_IT" ]]; then
+  if [[ -n "$SKEL_DIR_ROLL_UP_IT" && -d "$SKEL_DIR_ROLL_UP_IT" ]]; then
     printf "$debug_prefix Skel dir existst: $SKEL_DIR_ROLL_UP_IT \n"
     find /etc/skel/ -mindepth 1 -maxdepth 1 | xargs rm -Rf
     rsync -rtvu --delete $SKEL_DIR_ROLL_UP_IT/ /etc/skel
-else
-    printf "${RED_ROLLUP_IT} $debug_prefix Error skel dir doesn't exist ${END_ROLLUP_IT} \n"
-    exit 1;
-fi
+  else
+    printf "${RED_ROLLUP_IT} $debug_prefix Error skel dir doesn't exist ${END_ROLLUP_IT} \n" >&2
+    exit 1
+  fi
 }
 
-prepareSudoersd_SM_RUI()
-{
-    local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-    printf "$debug_prefix enter the \n"
-    if [[ -z "$1" ]]; then
-        printf "$debug_prefix No user name specified [$1] \n"
-        exit 1;
-    fi
+prepareSudoersd_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix enter \n"
+  if [[ -z "$1" ]]; then
+    printf "$debug_prefix No user name specified [$1] \n"
+    exit 1
+  fi
 
-    local -r sudoers_fl="/etc/sudoers"
-    local -r sudoers_addon="/etc/sudoers.d/admins.$(hostname)"
-    local -r sudoers_templ="
-    User_Alias	LOCAL_ADM_GROUP = $1
+  local -r sudoers_file="/etc/sudoers"
+  local -r sudoers_addon="/etc/sudoers.d/admins.$(hostname)"
+  local -r sudoers_templ="$(
+    cat <<-EOF
+User_Alias	LOCAL_ADM_GROUP = $1
 
-    # Run any command on any hosts but you must log in
-    # %ALIAS|NAME% %WHERE%=(%WHO%)%WHAT%
+# Run any command on any hosts but you must log in
+# %ALIAS|NAME% %WHERE%=(%WHO%)%WHAT%
 
-    LOCAL_ADM_GROUP ALL=(ALL)ALL
-    "
-    if [[ ! -f $sudoers_file ]]; then
-        touch $sudoers_addon
-        echo "$sudoers_templ" > $sudoers_addon
+LOCAL_ADM_GROUP ALL=(ALL)ALL
+EOF
+  )"
+  if [[ ! -f $sudoers_addon ]]; then
+    touch $sudoers_addon
+    echo "$sudoers_templ" >$sudoers_addon
+  else
+    # add new user
+    local replace_str=""
+    replace_str=$(echo "$sudoers_templ" | awk -v user_name="$1" '/^User_Alias/ {
+  print $0","user_name
+}')
+
+    if [[ -n "replace_str" ]]; then
+      # - to write to a file: use -i option
+      # - to use shell variables use double qoutes
+      sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
+      sed -i "s/^\#\s*\#includedir\s*\/etc\/sudoers\.d\s*$/\#includedir \/etc\/sudoers\.d/g" $sudoers_file
     else
-        # add new user
-        local replace_str=""
-        replace_str=$(awk -v "user_name=$1" '/^User_Alias/ {
-            print $0,user_name
-        }' $sudoers_templ)
-
-        if [[ -n "replace_str" ]]; then
-            # - to write to a file: use -i option
-            # - to use shell variables use double qoutes
-            sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
-            sed -i "s/^\#includedir \/etc\/sudoers\.d/includedir \/etc\/sudoers\.d/g" $sudoers_fl 
-        else 
-            printf "$debug_prefix Erro Can't find User_Alias string\n"
-            exit 1
-        fi
+      printf "$debug_prefix Error Can't find User_Alias string\n"
+      exit 1
     fi
+  fi
 }
 
 #:
 #: arg0 - user
 #: arg1 - pwd
-#: arg2 - match_pwd
 #:
-createAdmUser_SM_RUI()
-{
-local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-printf "$debug_prefix Enter the \n"
-printf "$debug_prefix [$1] parameter #1 \n"
-printf "$debug_prefix [$2] parameter #1 \n"
-printf "$debug_prefix [$3] parameter #2 \n"
+createAdmUser_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix Enter the \n"
+  printf "$debug_prefix [$1] parameter #1 \n"
 
-local errs=""
-local to_match="${3:-false}"
+  if [[ -n "$1" && -n "$2" ]]; then
+    local rc=0
+    local errs=""
+    local -r user_name="${1:-"gonzo"}"
+    local -r pwd="${2:-"$6$0sxMqcpiAjgc3lmt$jNw78O11HuXwCl6s0hMy2CpNjmxq1QUfLiNM4M4SjIzGXkPsIWJBa56dNuue1kUPsZmA69Uf2YEHUgp.WjaWI."}"
 
-if [[ -e stream_error.log ]]; then
-    echo "" > stream_error.log
-fi
-
-if [[ -n "$1" && -n "$2" ]]; then
-	local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
-	if [[ -n "$isExist" ]]; then
-		printf "$debug_prefix The user exists \n"
-		exit 1;
-	fi
-
-  if [[ "$to_match" == "true" ]]; then
-    # check passwd matching
-    local isMatchingRes="false"
-    isPwdMatching_COMMON_RUI $2 isMatchingRes	
-    if [[ "isMatchingRes" == "false" ]];
-    then
-      printf "${RED_ROLLUP_IT} $$debug_prefix Error: Can't create the user: Password does not match the regexp ${END_ROLLUP_IT} $\n"	
-      exit 1;	
+    if [[ -e stderr.log ]]; then
+      echo "" >stderr.log
     fi
+
+    local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
+    if [[ -n "$isExist" ]]; then
+      printf "$debug_prefix The user exists \n"
+      exit 1
+    fi
+
+    printf "debug: [ $0 ] There is no [ $user_name ] user, let's create him \n"
+    # adduser $1 --gecos "$1" --disabled-password 2>stderr.log
+    adduser "$user_name" 2>stderr.log
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      errs="$(cat stderr.log)"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ $errs ]${END_ROLLUP_IT}" >&2
+      exit 1
+    fi
+
+    echo "$user_name:$pwd" | chpasswd -e 2>stderr.log
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      errs="$(cat stderr.log)"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n" >&2
+      userdel -r $user_name
+      exit 1
+    fi
+
+    chage -d 0 "$user_name" 2>stderr.log
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      errs="$(cat stderr.log)"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set expired password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n" >&2
+      userdel -r $user_name
+      exit 1
+    fi
+
+    local -r isWheel=$(getent group | cut -d : -f1 | grep wheel)
+    local -r isDevelop=$(getent group | cut -d : -f1 | grep develop)
+
+    if [[ -n "$isWheel" ]]; then
+      printf "$debug_prefix Add the user to "wheel" groups \n"
+      usermod -aG wheel $user_name 2>stderr.log
+      rc=$?
+      if [[ $rc -ne 0 ]]; then
+        errs="$(cat stderr.log)"
+        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to wheel group. See details: [ $errs ]${END_ROLLUP_IT} \n" >&2
+        exit 1
+      fi
+    else
+      printf "$debug_prefix There is no "wheel" group \n"
+      printf "$debug_prefix "isWheel" [ $isWheel ] \n"
+      exit 1
+    fi
+
+    if [[ -n "$isDevelop" ]]; then
+      printf "$debug_prefix Add the user to "develop" group ONLY: run installDefPkgSuit  \n"
+      usermod -aG develop $user_name 2>stderr.log
+      rc=$?
+      if [[ $rc -ne 0 ]]; then
+        errs="$(cat stderr.log)"
+        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to develop group. See details: [ $errs ]${END_ROLLUP_IT} \n" >&2
+        exit 1
+      fi
+    fi
+  else
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n" >&2
+    exit 1
   fi
-	
-	printf "debug: [ $0 ] There is no [ $1 ] user, let's create him \n"
-	# adduser $1 --gecos "$1" --disabled-password 2>stream_error.log
-	adduser "$1" 2>stream_error.log
-	if [[ -e stream_error.log ]]; then
-		errs="$(cat stream_error.log)"
-	fi
+}
 
-	if [[ -n "$errs" ]]; then
-		printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ $errs ]${END_ROLLUP_IT}"		
-		exit 1;
-	else
-		echo "$1:$2" | chpasswd 2>stream_error.log 1>stdout.log
-        if [[ -e stream_error.log ]]; then
-            errs="$(cat stream_error.log)"
-        fi
+#:
+#: Create system no shell user
+#: arg0 - name
+#:
+createSysUser_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix Enter the function [ $FUNCNAME ]\n"
+  checkNonEmptyArgs_COMMON_RUI "$@"
 
-		if [[ -n "$errs" ]]; then
-			printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ]  Delete the user ${END_ROLLUP_IT} \n"	
-			userdel -r $1
+  local user_name="$1"
+  local passwd=""
 
-			exit 1;
-		else
-			local isSudo=$(getent group | cut -d : -f1 |  grep sudo)
-			local isWheel=$(getent group | cut -d : -f1 | grep wheel)
+  local isExist="$(getent shadow | cut -d : -f1 | grep $user_name)"
+  if [[ -n "$isExist" ]]; then
+    printf "$debug_prefix The user exists \n"
+    exit 1
+  fi
 
-			if [[ -n "$isSudo" && -n "$isWheel" ]];	then
-				printf "$debug_prefix Add the user to "sudo" and "wheel" groups \n"	
-				usermod -aG wheel,sudo $1
-			elif [[ -n "$isSudo" ]]; then
-				printf "$debug_prefix Add the user to "sudo" group ONLY \n"	
-				
-                groupadd wheel
-				usermod -aG sudo,wheel $1
-			elif [[ -n "$isWheel" ]]; then
-				printf "$debug_prefix Add the user to "wheel" group ONLY: run installDefPkgSuit  \n"	
-				usermod -aG wheel $1
-			elif [[ ! -n "$isSudo" && ! -n "isWheel" ]]; then
-				printf "$debug_prefix There is no "wheel", no "sudo" group \n"	
-				printf "$debug_prefix "isWheel" [ $isWheel ], "isSudo" [ $isSudo ] \n"	
-				exit 1;
-			fi
-		fi
-	fi
-else
-	printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n"
-	exit 1;
-fi
+  adduser -r -s /bin/nologin "$user_name"
+
+  printf "\nEnter password for the system user: "
+  read -s passwd
+
+  echo "$user_name:$psswd" | chpasswd 2>&1
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+#:
+#: Create FTP user
+#: arg0 - name
+#:
+createFtpUser_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix Enter the function [ $FUNCNAME ]\n"
+  checkNonEmptyArgs_COMMON_RUI "$@"
+
+  local -r ftp_user="$1"
+
+  echo -e '#!/bin/sh\necho "This account is limited to FTP access only."' | sudo tee -a /bin/ftponly
+  sudo chmod a+x /bin/ftponly
+
+  sudo adduser -s /bin/ftponly "$ftp_user"
+  sudo passwd "$ftp_user"
+  sudo mkdir -p "/home/$ftp_user/ftp/upload"
+  sudo chmod 550 "/home/$ftp_user/ftp"
+  sudo chmod 750 "/home/$ftp_user/ftp/upload"
+  sudo chown -R $ftp_user: "/home/$ftp_user/ftp"
+
+  echo "$ftp_user" | sudo tee -a /etc/vsftpd/user_list
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
 #:
 #: args0 - user
 #:
-kickUser_SM_RUI(){
-local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-local rc=0
-local errs=""
-printf "$debug_prefix Enter the function \n"
-printf "$debug_prefix [$1] parameter #1 \n"
+kickUser_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  local rc=0
+  local errs=""
+  printf "$debug_prefix Enter the function \n"
+  printf "$debug_prefix [$1] parameter #1 \n"
 
-if [[ -e stream_error.log ]]; then
-    echo "" > stream_error.log
-fi
+  if [[ -e stream_error.log ]]; then
+    echo "" >stream_error.log
+  fi
 
-if [[ -n "$1" ]]; then
-	local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
-	if [[ -n "$isExist" && "$(whoami)" != "$1" && "$(getSudoUser_COMMON_RUI)" != "$1" ]]; then
-    local upids=$(ps -U "$1" | awk '(NR>1){print $1}')
-    ([[ -n "$upids" ]] && kill $upids) || printf "${YEL_ROLLUP_IT} $debug_prefix Warrning: no [$1] user's pids found ${END_ROLLUP_IT}\n"  
-	fi
-  rc=$?
-  errs="$(cat stream_error.log)"
-  if [[ $rc -ne 0 || -n "$errs" ]]; then
-		printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user: [ $errs ]${END_ROLLUP_IT}\n"		
-		exit 1;
-	fi
-else
-	printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n"
-	exit 1;
-fi
+  if [[ -n "$1" ]]; then
+    local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
+    if [[ -n "$isExist" && "$(whoami)" != "$1" && "$(getSudoUser_COMMON_RUI)" != "$1" ]]; then
+      local upids=$(ps -U "$1" | awk '(NR>1){print $1}')
+      ([[ -n "$upids" ]] && kill $upids) || printf "${YEL_ROLLUP_IT} $debug_prefix Warrning: no [$1] user's pids found ${END_ROLLUP_IT}\n"
+    fi
+    rc=$?
+    errs="$(cat stream_error.log)"
+    if [[ $rc -ne 0 || -n "$errs" ]]; then
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
+      exit 1
+    fi
+  else
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n" >&2
+    exit 1
+  fi
 
 }
 
 #:
 #: arg0 - user
 #:
-rmUser_SM_RUI()
-{
-local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-local rc=0
-local errs=""
-printf "$debug_prefix Enter the function \n"
-printf "$debug_prefix [$1] parameter #1 \n"
+rmUser_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  local rc=0
+  local errs=""
+  printf "$debug_prefix Enter the function \n"
+  printf "$debug_prefix [$1] parameter #1 \n"
 
-if [[ -e stream_error.log ]]; then
-    echo "" > stream_error.log
-fi
+  if [[ -e stream_error.log ]]; then
+    echo "" >stream_error.log
+  fi
 
-if [[ -n "$1" ]]; then
-	local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
-	if [[ -n "$isExist" ]]; then
-    kickUser_SM_RUI "$1"
-    userdel -r "$1" 2> stream_error.log
-	fi
-  rc=$?
-  errs="$(cat stream_error.log)"
-  if [[ $rc -ne 0 || -n "$errs" ]]; then
-		printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ $errs ]${END_ROLLUP_IT}\n"		
-		exit 1;
-	fi
-else
-	printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n"
-	exit 1;
-fi
+  if [[ -n "$1" ]]; then
+    local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
+    if [[ -n "$isExist" ]]; then
+      kickUser_SM_RUI "$1"
+      userdel -r "$1" 2>stream_error.log
+    fi
+    rc=$?
+    errs="$(cat stream_error.log)"
+    if [[ $rc -ne 0 || -n "$errs" ]]; then
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
+      exit 1
+    fi
+  else
+    printf "${RED_ROLLUP_IT} $debug_prefix Error: no parameters for creating user ${END_ROLLUP_IT} \n" >&2
+    exit 1
+  fi
 }
 
-installDefPkgSuit_SM_RUI()
-{
-local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-declare -r local pkg_list=('sudo' 'tmux' 'vim' 'git' 'tcpdump') 
-local res=""
-local errs=""
+installDefPkgSuit_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-apt-get -y update
+  installEpel_SM_RUI
 
-for i in "${pkg_list[@]}"; do
-printf "$debug_prefix Current element is $i \n"
+  local -r pkg_list=(
+    "libffi-devel" "zlib-devel" "kernel-devel" "make" "ncurses-devel" "ntp"
+    "gcc" "openssl-devel" "bzip2-devel" "libffi"
+    "ncurses-devel" "git-core" "python36" "python36-devel" "python36-setuptools"
+    "sudo" "git" "tcpdump" "wget" "lsof" "net-tools" "curl"
+  )
 
-if [[ -e stream_error.log ]]; then
-    echo "" > stream_error.log
-fi
+  runInBackground_COMMON_RUI "yum -y update --exclude=kernel"
+  runInBackground_COMMON_RUI "yum -y upgrade"
+  runInBackground_COMMON_RUI "yum -y groupinstall \"Development Tools\""
 
-isPkgInstalled_COMMON_RUI $i res
-if [[ "$res" == "false" ]]; then
-	printf "$debug_prefix [ $i ] is not installed \n"
-	apt-get -y install $i 2>stream_error.log 1>stdout.log
-    if [[ -e stream_error.log  ]]; then
-        errs="$(cat stream_error.log)"
-    fi
+  installPkgList_COMMON_RUI pkg_list ""
 
-	if [[ -n "$errs" ]]; then
-		printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't install $i . Text of errors: $errs ${END_ROLLUP_IT} \n"
-        exit 1
-    else
-		printf "$debug_prefix [ $i ] is successfully installed \n" 
-    fi
-else
-	printf "$debug_prefix [ $i ] is installed \n"
-fi
-done
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
+}
 
-apt-get -y dist-upgrade
+installSpecPkgs_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
+
+  local -r deps_list=(
+    "install_python3_7_INSTALL_RUI"
+    "install_golang_INSTALL_RUI"
+  )
+
+  local -r cmd_list=(
+    "install_tmux_INSTALL_RUI"
+    "install_vim8_INSTALL_RUI"
+    "install_grc_INSTALL_RUI"
+    "install_rcm_INSTALL_RUI"
+  )
+
+  runCmdListInBackground_COMMON_RUI deps_list
+  runCmdListInBackground_COMMON_RUI cmd_list
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
 
 #
-# arg0 - locale name 
+# arg0 - locale name
 #
 setLocale_SM_RUI() {
-    local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-    printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the ${END_ROLLUP_IT} \n"
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-    declare -r local locale_gen_cfg_path="/etc/locale.gen"
-    if [[ ! -e $locale_gen_cfg_path ]]; then
-        printf "$debug_prefix ${RED_ROLLUP_IT} Error: No locale.gen exists ${END_ROLLUP_IT}\n"
-        exit 1;
-    fi
+  if [ -z "$1" ]; then
+    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Empty argument: locale  ${END_ROLLUP_IT}"
+    exit 1
+  fi
 
-    if [[ -z "$1" ]]; then
-        printf "$debug_prefix ${RED_ROLLUP_IT} Error: No locale name passed ${END_ROLLUP_IT}\n"
-        exit 1;
-    fi
+  local -r locale_str="$1"
 
-    declare -r local ln="$1"
-    if [[ -e stream_error.log ]]; then
-        echo "" > stream_error.log
-    fi
-    
-    sed -i "0,/.*$ln.*$/ s/.*$ln.*$/$ln/g" $locale_gen_cfg_path 2>stream_error.log 
-    if [[ -e stream_error.log && -n "$(cat stream_error.log)" ]]; then
-        printf "$debug_prefix ${RED_ROLLUP_IT} Error: Can't activate the loale. 
-                Error List: $(cat stream_error.log) ${END_ROLLUP_IT}\n"
-        exit 1
-    fi
-    locale-gen 2>stream_error.log
+  [[ -z "$(localectl list-locales | egrep "$locale_str")" ]] && (
+    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} There is no input locale [$locale_str] in the list of available locales ${END_ROLLUP_IT}"
+    exit 1
+  )
 
-    if [[ -e stream_error.log && -n "$(cat stream_error.log)" ]]; then
-        printf "$debug_prefix ${RED_ROLLUP_IT} Error: Can't activate the locale. Error List: $(cat stream_error.log) ${END_ROLLUP_IT}\n"
-        exit 1
-    fi
+  localectl set-locale LANG="$locale_str"
 
-printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
 
 prepareSSH_SM_RUI() {
-    declare -r local daemon_cfg="/etc/ssh/sshd_config"
+  declare -r local daemon_cfg="/etc/ssh/sshd_config"
 
-    sed -i "0,/.*PermitRootLogin.*$/ s/.*PermitRootLogin.*/PermitRootLogin yes/g" $daemon_cfg
-    sed -i "0,/.*PubkeyAuthentication.*$/ s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" $daemon_cfg
+  sed -i "0,/.*PermitRootLogin.*$/ s/.*PermitRootLogin.*/PermitRootLogin no/g" $daemon_cfg
+  sed -i "0,/.*PubkeyAuthentication.*$/ s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" $daemon_cfg
 }
 
-installEpel_SM_RUI() {
-    local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-    printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the ${END_ROLLUP_IT} \n"
-
-    local rc=0
-    if [ -n "$(yum repolist | grep -e '^extras\/7\/x86_64.*$')" ]; then
-        yum -y install epel-release
-        rc=$?
-        if [ rc -ne 0 ]; then
-            printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't install epel-release ${END_ROLLUP_IT} \n"
-            return $rc
-        fi
-    else 
-        local -r epel_rpm="epel-release-7-9.noarch.rpm"
-        local -r url="http://dl.fedoraproject.org/pub/epel/$epel_rpm"
-        wget "$url"
-        if [ rc -ne 0]; then
-            printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't download epel-release-7-9.noarch.rpm ${END_ROLLUP_IT} \n"
-            return $rc
-        fi
-
-        rpm -ivh "$epel_rpm"
-        rm -f "$epel_rpm"
-    fi
-    
-    printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the ${END_ROLLUP_IT} \n"
-    rc=$?
-    return $rc
+findBin_SM_RUI() {
+  if [ -z "$1" ]; then
+    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Empty argument ${END_ROLLUP_IT}"
+    exit 1
+  fi
+  local -r cmd="$1"
+  echo -n "$(find /usr -regex ".*bin/$cmd" 2>/dev/null)"
 }
 
+#:
+#: Summ here all base settings
+#:
+baseSetup_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
+  setupNtpd_SM_RUI
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+#:
+#: Setup ntp
+#:
+setupNtpd_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  systemctl stop ntpd
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't stop ntpd with [systemctl stop ntpd]. Exit. ${END_ROLLUP_IT} \n"
+    exit 1
+  fi
+  timedatectl set-timezone "Asia/Sakhalin"
+  systemctl enable ntpd
+
+  if [[ ! -e /etc/ntp.conf.orig ]]; then
+    # comment existing ntp-servers
+    sed -i -E 's/^(server [[:digit:]].*ntp\.org.*)$/#\1/' /etc/ntp.conf
+
+    cp -f "/etc/ntp.conf" "/etc/ntp.conf.orig"
+    cat <<EOF >>/etc/ntp.conf
+# Use public servers from the pool.ntp.org project
+server 0.ru.pool.ntp.org iburst      
+server 1.ru.pool.ntp.org iburst      
+server 2.ru.pool.ntp.org iburst      
+server 3.ru.pool.ntp.org iburst
+EOF
+  fi
+
+  ntpd -qa
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't synchronize time with [ntpd -qa]. Exit. ${END_ROLLUP_IT} \n"
+    exit 1
+  fi
+
+  systemctl start ntpd
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't start ntpd with [systemctl start ntpd]. Exit. ${END_ROLLUP_IT} \n"
+    exit 1
+  fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}

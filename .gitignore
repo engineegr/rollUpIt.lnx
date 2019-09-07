@@ -4,3 +4,4 @@
 *.private
 *.key
 .DS_Store
+tmp
