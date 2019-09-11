@@ -1,5 +1,13 @@
 #!/bin/bash
 
+isDebian_SM_RUI() {
+  [[ -n "$(cat /etc/*-release | egrep "Debian")" ]] && echo "true" || echo "false"
+}
+
+isCentOS_SM_RUI() {
+  [[ -n "$(cat /etc/*-release | egrep "CentOS")" ]] && echo "true" || echo "false"
+}
+
 #
 # ----- Basic System Management Scripts ------- #
 #
@@ -29,21 +37,7 @@ prepareUser_SM_RUI() {
     prepareSudoersd_SM_RUI "$1"
   fi
 
-  # see https://unix.stackexchange.com/questions/269078/executing-a-bash-script-function-with-sudo
-  # __FUNC=$(declare -f skeletonUserHome; declare -f onErrors_SM_RUI)
-  __FUNC_SKEL=$(declare -f skeletonUserHome_SM_RUI)
-  __FUNC_ONERRS=$(declare -f onErrors_SM_RUI)
-  __FUNC_INS_SHFMT=$(declare -f install_vim_shfmt_INSTALL_RUI)
-
-  sudo -u "$1" sh -c "source $ROOT_DIR_ROLL_UP_IT/libs/addColors.sh;   
-    source $ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh; 
-    source $ROOT_DIR_ROLL_UP_IT/libs/commons.sh;
-    source $ROOT_DIR_ROLL_UP_IT/libs/sm.sh;
-    source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh;
-    source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh;
-    source $ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh;
-    $__FUNC_SKEL; $__FUNC_ONERRS; $__FUNC_INS_SHFMT;
-    skeletonUserHome_SM_RUI $1"
+  doRunSkeletonUserHome_SM_RUI "$1"
 
   prepareSSH_SM_RUI
 }
@@ -99,12 +93,12 @@ onErrors_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local -r err_msg=$([[ -z "$1" ]] && echo "ERROR!!!" || echo "$1")
   local errs=""
-  if [[ -e stream_error.log ]]; then
-    errs="$(cat stream_error.log)"
+  if [[ -e log/stream_error.log ]]; then
+    errs="$(cat log/stream_error.log)"
   fi
 
   if [[ -n "$errs" ]]; then
-    printf "$debug_prefix Error: $err_msg [ $errs ]\n" >&2
+    printf "\n${RED_ROLLUP_IT} $debug_prefix Error: $err_msg [ $errs ] ${END_ROLLUP_IT}\n" >&2
     exit 1
   fi
 }
@@ -113,7 +107,7 @@ onFailed_SM_RUI() {
   local -r rc=$1
   local -r msg="$2"
   if [ $1 -ne 0 ]; then
-    printf "\n${RED_ROLLUP_IT} $debug_prefix Error: ${msg}  ${END_ROLLUP_IT}\n"
+    printf "\n${RED_ROLLUP_IT} $debug_prefix Error: ${msg} ${END_ROLLUP_IT}\n"
     exit 1
   fi
 }
@@ -187,10 +181,10 @@ createAdmUser_SM_RUI() {
     local rc=0
     local errs=""
     local -r user_name="${1:-"gonzo"}"
-    local -r pwd="${2:-"$6$0sxMqcpiAjgc3lmt$jNw78O11HuXwCl6s0hMy2CpNjmxq1QUfLiNM4M4SjIzGXkPsIWJBa56dNuue1kUPsZmA69Uf2YEHUgp.WjaWI."}"
+    local -r pwd="${2:-"saAWeCFm03FjY"}"
 
     if [[ -e stderr.log ]]; then
-      echo "" >stderr.log
+      echo "" >log/stderr.log
     fi
 
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
@@ -200,8 +194,8 @@ createAdmUser_SM_RUI() {
     fi
 
     printf "debug: [ $0 ] There is no [ $user_name ] user, let's create him \n"
-    # adduser $1 --gecos "$1" --disabled-password 2>stderr.log
-    adduser "$user_name" 2>stderr.log
+    adduser $1 --gecos "$1" --disabled-password 2>log/stderr.log
+    # adduser "$user_name" 2>log/stderr.log
     rc=$?
     if [[ $rc -ne 0 ]]; then
       errs="$(cat stderr.log)"
@@ -209,16 +203,16 @@ createAdmUser_SM_RUI() {
       exit 1
     fi
 
-    echo "$user_name:$pwd" | chpasswd -e 2>stderr.log
-    rc=$?
-    if [[ $rc -ne 0 ]]; then
-      errs="$(cat stderr.log)"
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ] Delete the user ${END_ROLLUP_IT} \n" >&2
-      userdel -r $user_name
-      exit 1
-    fi
+    #    echo "$user_name:$pwd" | chpasswd -e 2>log/stderr.log
+    #    rc=$?
+    #    if [[ $rc -ne 0 ]]; then
+    #      errs="$(cat stderr.log)"
+    #      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ] Delete the user ${END_ROLLUP_IT} \n" >&2
+    #      userdel -r $user_name
+    #      exit 1
+    #    fi
 
-    chage -d 0 "$user_name" 2>stderr.log
+    chage -d 0 "$user_name" 2>log/stderr.log
     rc=$?
     if [[ $rc -ne 0 ]]; then
       errs="$(cat stderr.log)"
@@ -232,7 +226,7 @@ createAdmUser_SM_RUI() {
 
     if [[ -n "$isWheel" ]]; then
       printf "$debug_prefix Add the user to "wheel" groups \n"
-      usermod -aG wheel $user_name 2>stderr.log
+      usermod -aG wheel $user_name 2>log/stderr.log
       rc=$?
       if [[ $rc -ne 0 ]]; then
         errs="$(cat stderr.log)"
@@ -247,7 +241,7 @@ createAdmUser_SM_RUI() {
 
     if [[ -n "$isDevelop" ]]; then
       printf "$debug_prefix Add the user to "develop" group ONLY: run installDefPkgSuit  \n"
-      usermod -aG develop $user_name 2>stderr.log
+      usermod -aG develop $user_name 2>log/stderr.log
       rc=$?
       if [[ $rc -ne 0 ]]; then
         errs="$(cat stderr.log)"
@@ -325,8 +319,8 @@ kickUser_SM_RUI() {
   printf "$debug_prefix Enter the function \n"
   printf "$debug_prefix [$1] parameter #1 \n"
 
-  if [[ -e stream_error.log ]]; then
-    echo "" >stream_error.log
+  if [[ -e log/stream_error.log ]]; then
+    echo "" >log/stream_error.log
   fi
 
   if [[ -n "$1" ]]; then
@@ -336,7 +330,7 @@ kickUser_SM_RUI() {
       ([[ -n "$upids" ]] && kill $upids) || printf "${YEL_ROLLUP_IT} $debug_prefix Warrning: no [$1] user's pids found ${END_ROLLUP_IT}\n"
     fi
     rc=$?
-    errs="$(cat stream_error.log)"
+    errs="$(cat log/stream_error.log)"
     if [[ $rc -ne 0 || -n "$errs" ]]; then
       printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
       exit 1
@@ -358,18 +352,18 @@ rmUser_SM_RUI() {
   printf "$debug_prefix Enter the function \n"
   printf "$debug_prefix [$1] parameter #1 \n"
 
-  if [[ -e stream_error.log ]]; then
-    echo "" >stream_error.log
+  if [[ -e log/stream_error.log ]]; then
+    echo "" >log/stream_error.log
   fi
 
   if [[ -n "$1" ]]; then
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
     if [[ -n "$isExist" ]]; then
       kickUser_SM_RUI "$1"
-      userdel -r "$1" 2>stream_error.log
+      userdel -r "$1" 2>log/stream_error.log
     fi
     rc=$?
-    errs="$(cat stream_error.log)"
+    errs="$(cat log/stream_error.log)"
     if [[ $rc -ne 0 || -n "$errs" ]]; then
       printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
       exit 1
@@ -397,14 +391,11 @@ installDefaults_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-  local -r pkg_list=(
-    "libffi-devel" "zlib-devel" "kernel-devel" "make" "ncurses-devel" "ntp"
-    "gcc" "openssl-devel" "bzip2-devel" "libffi"
-    "ncurses-devel" "git-core" "python36" "python36-devel" "python36-setuptools"
-    "sudo" "git" "tcpdump" "wget" "lsof" "net-tools" "curl"
+  local -r def_pkg_list=(
+    "make" "ntp" "gcc" "git-core" "sudo" "git" "tcpdump" "wget" "lsof" "net-tools" "curl"
   )
 
-  runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""
+  runInBackground_COMMON_RUI "installPkgList_COMMON_RUI def_pkg_list \"\""
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
@@ -451,7 +442,8 @@ baseSetup_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  setLocale_SM_RUI "ru_RU.utf8"
+  local locale_str=$(doGetLocaleStr)
+  setLocale_SM_RUI ${locale_str}
   setupNtpd_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
@@ -463,15 +455,15 @@ baseSetup_SM_RUI() {
 setupNtpd_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  systemctl stop ntpd
-  rc=$?
-  if [[ $rc -ne 0 ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't stop ntpd with [systemctl stop ntpd]. Exit. ${END_ROLLUP_IT} \n"
-    exit 1
+  local ntp_service_name="ntpd"
+  if [ $(isDebian_SM_RUI) = "true" ]; then
+    ntp_service_name="ntp"
   fi
+  systemctl stop ${ntp_service_name}
+  onFailed_SM_RUI $? "Error: can't stop ntpd with [systemctl stop ntpd]. Exit."
+
   timedatectl set-timezone "Asia/Sakhalin"
-  systemctl enable ntpd
+  systemctl enable ${ntp_service_name}
 
   if [[ ! -e /etc/ntp.conf.orig ]]; then
     # comment existing ntp-servers
@@ -487,14 +479,16 @@ server 3.ru.pool.ntp.org iburst
 EOF
   fi
 
-  ntpd -qa
-  rc=$?
-  if [[ $rc -ne 0 ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't synchronize time with [ntpd -qa]. Exit. ${END_ROLLUP_IT} \n"
-    exit 1
+  if [ $(isDebian_SM_RUI) = "true" ]; then
+    ntpdate -s 0.ru.pool.ntp.org
+    onFailed_SM_RUI $? "Error: can't synchronize time with [ntpdate -s 0.ru.pool.ntp.org]. Exit."
+  else
+    ntpd -qa
+    onFailed_SM_RUI $? "Error: can't synchronize time with [ntpd -qa]. Exit."
   fi
 
-  systemctl start ntpd
+  systemctl start ${ntp_service_name}
+  onFailed_SM_RUI $? "Error: can't start ntpd with [systemctl start ntpd]. Exit."
   rc=$?
   if [[ $rc -ne 0 ]]; then
     printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't start ntpd with [systemctl start ntpd]. Exit. ${END_ROLLUP_IT} \n"
@@ -502,4 +496,40 @@ EOF
   fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+getSysInfo_COMMON_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+
+  clrsScreen_TTY_RUI
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  local -r os_info="$(uname -a)"
+  local -r distr_info=$(cat /etc/*-release)
+  local -r platform_info="$(dmidecode -t system)"
+  local -r mem_usage_info="$(free -h)"
+  local -r disk_usage_info="$(df -hl)"
+
+  local -r max_x="$(max_x_TTY_RUI)"
+  local cy="$(cpos_y_TTY_RUI)"
+
+  local -r head_os_info="INFO: Linux Kernel"
+  local -r head_distr_info="INFO: Distributive"
+  local -r head_platform_info="INFO: Platform"
+  local -r head_memus_info="INFO: Memory usage"
+  local -r head_diskus_info="INFO: Disk usage"
+
+  printf "${GRN_ROLLUP_IT}${head_os_info}${END_ROLLUP_IT}"
+  to_xy_TTY_RUI $(($max_x - ${#os_info} - 1)) $(($cy - 1))
+  printf "${CYN_ROLLUP_IT}${os_info}${END_ROLLUP_IT}\n\n"
+
+  backPrint_COMMON_RUI "${head_distr_info}" "${distr_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" ""
+  backPrint_COMMON_RUI "${head_platform_info}" "${platform_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" "true"
+  backPrint_COMMON_RUI "${head_memus_info}" "${mem_usage_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" ""
+  # backPrint_COMMON_RUI "${head_diskus_info}" "${disk_usage_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" "true"
+  printf "${GRN_ROLLUP_IT}${head_diskus_info}${END_ROLLUP_IT}\n"
+  echo "${CYN_ROLLUP_IT}${disk_usage_info}${END_ROLLUP_IT}"
+
+  printf "\n"
+  printf "\n$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
