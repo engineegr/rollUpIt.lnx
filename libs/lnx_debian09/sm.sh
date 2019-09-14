@@ -4,6 +4,7 @@ doUpdate_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
+  apt-get -y install bc
   runInBackground_COMMON_RUI "prepareApt"
   onFailed_SM_RUI $? "Failed apt-get preparation"
 
@@ -14,7 +15,6 @@ prepareApt() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-  apt-get -y install bc
   onFailed_SM_RUI $? "Failed installation <bc>"
 
   # use to overcome stucking on "Setting up... grub2-pc" see more https://askubuntu.com/questions/146921/how-do-i-apt-get-y-dist-upgrade-without-a-grub-config-prompt

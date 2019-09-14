@@ -22,7 +22,7 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
 trap "onInterruption_COMMON_RUI $? $LINENO $BASH_COMMAND" ERR EXIT SIGHUP SIGINT SIGTERM SIGQUIT RETURN
 
 main() {
-  # clearScreen_TTY_RUI
+  clearScreen_TTY_RUI
 
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
@@ -35,7 +35,7 @@ main() {
   baseSetup_SM_RUI
   prepareUser_SM_RUI "$user" "$pwd"
 
-  # clearScreen_TTY_RUI
+  clearScreen_TTY_RUI
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 

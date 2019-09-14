@@ -189,9 +189,9 @@ waitForCmnd_COMMON_RUI() {
   local -r __pid=$1
   local -r __rcmd="$2"
 
-  printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command ${__rcmd} ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command: ${__rcmd} pid: [${__pid}] ${END_ROLLUP_IT} \n"
   printf "${MAG_ROLLUP_IT}"
-  progressBar "${__pid}" 40 "!" "100" "Run command: ${__rcmd}"
+  progressBar "${__pid}" 120 "▇" "100" "Run command: ${__rcmd}"
 }
 
 #:
@@ -248,6 +248,7 @@ runCmdListInBackground_COMMON_RUI() {
     printf "${GRN_ROLLUP_IT} Debug: Cmd name [${__cmd_name}] ${END_ROLLUP_IT}\n"
 
     WAIT_CHLD_CMD_IND_COMMON_RUI=$count
+    eval "waitForCmnd_COMMON_RUI ${__epid} \"${chld_cmd}\"" &
     wait ${__epid}
     let ++count
   done
@@ -255,15 +256,6 @@ runCmdListInBackground_COMMON_RUI() {
 
   printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
   return $?
-}
-
-#:
-#: arg0 - Msg
-#: arg1 - duration
-#:
-cmdProgressBar() {
-  local -r curr_x=cpos_x_TTY_RUI
-  local -r curr_y=cpos_y_TTY_RUI
 }
 
 extractCmndName_COMMON_RUI() {
@@ -412,6 +404,7 @@ displayBgChldErroLog_COMMON_RUI() {
 #: arg5 - head msg
 #:
 progressBar() {
+  hideCu_TTY_RUI
   if [[ -z "$1" || -z "$2" || -z "$3" || -z "$4" || -z "$5" ]]; then
     onErrors_SM_RUI "NULL arguments"
   fi
@@ -421,12 +414,11 @@ progressBar() {
   local -r len="$4"
   local -r header="$5"
   local track_str=""
-  local -r sx=$(cpos_x_TTY_RUI)
-
+  local -r xmax=$(($len + 10))
+  local -r ymax=$(max_y_TTY_RUI)
   for ((i = 0; i < len; i++)); do
     track_str+="$sym"
   done
-  # printf "Time: $duration [sec]\r"
   echo "$header"
   local speed=$(echo "$len/$duration" | bc -l) # sym/sec
   # steps
@@ -438,9 +430,16 @@ progressBar() {
   local pwf=0.0
   local percentage_f=0.0
   local percentage=0.0
-  local -r sy0=$(cpos_y_TTY_RUI)
-  local -r sy1=$((sy0 + 1))
-  to_xy_TTY_RUI $sx $sy1
+  local -r sx=$(cpos_x_TTY_RUI)
+  local sy=$(cpos_y_TTY_RUI)
+
+  if [ $ymax -le $sy ]; then
+    tput el
+    sy=$(cpos_y_TTY_RUI)
+  fi
+
+  to_xy_TTY_RUI $sx $sy
+  printf "[ "
   while kill -0 $pid 2>/dev/null; do
     if (($(echo "$pwf < $duration" | bc -l))); then
       pwf=$(echo "$pwf+$st" | bc -l)
@@ -450,16 +449,16 @@ progressBar() {
       printf "${track_str:s%len:1}"
       save_cu_TTY_RUI
 
-      to_xy_TTY_RUI $sx $sy0
+      to_xy_TTY_RUI $(($xmax - 10)) $sy
       pwf=$(echo "$pwf" | awk '{ printf "%.7f",$1 }')
       percentage_f=$(echo "($pwf/$duration)*100" | bc -l)
       percentage=$(echo "${percentage_f}" | awk '{print int($1)}')
-      # echo -n "speed [$speed] sleep time[$st] passed way[$pwf] passed steps [$s] passed steps float [$sf]"
-      printf "%2d [%%]" "$percentage"
+      printf "] %2d [%%]" "$percentage"
       restore_cu_TTY_RUI
       sleep $st
     fi
   done
+  showCu_TTY_RUI
 }
 
 #:

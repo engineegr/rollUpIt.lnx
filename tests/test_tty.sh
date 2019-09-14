@@ -24,7 +24,7 @@ main() {
   getSysInfo_COMMON_RUI
   runInBackground_COMMON_RUI "du -d 1 -h -BM --exclude \"proc\" / 2>/dev/null"
   runInBackground_COMMON_RUI "du -d 1 -h -BM --exclude \"proc\" / 2>/dev/null"
-  showCu_TTY_RUI
+  runInBackground_COMMON_RUI "df -hl 2>/dev/null"
   printf "\n\n$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }
 
