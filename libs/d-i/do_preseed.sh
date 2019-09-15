@@ -11,7 +11,7 @@ set -o nounset
 # @$3 - Result ISO name
 # @$4 - Username - owner of the work dir (script is run on behalf of root-user)
 #
-function prepare_PRSD_ISO() {
+prepare_PRSD_ISO() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix enter the function \r"
 
@@ -55,10 +55,10 @@ function prepare_PRSD_ISO() {
   mount -o loop $iso_fp $root_dir_path/MOUNT-ISO
   find $root_dir_path/MOUNT-ISO -mindepth 1 -maxdepth 1 -exec cp -Rf {} $root_dir_path/SRC/ \;
 
-  cp -Rf $rollUpIt_src_path $root_dir_path/SRC/post_install
+  cp -Rvf $rollUpIt_src_path $root_dir_path/SRC/post_install
 
   umount $root_dir_path/MOUNT-ISO
-  chown -Rf "$user_name":"$user_name" $root_dir_path
+  chown -Rf ${user_name}:${user_name} ${root_dir_path}
 }
 #
 # Parameters
@@ -66,7 +66,7 @@ function prepare_PRSD_ISO() {
 # @$2 - Result ISO name
 # @$3 - Username - owner of the work dir (script is run on behalf of root-user)
 #
-function inject_preseed_cfg_PRSD_ISO() {
+inject_preseed_cfg_PRSD_ISO() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix enter the function \r"
 
@@ -111,7 +111,8 @@ function inject_preseed_cfg_PRSD_ISO() {
   rm ./preseed.cfg
 
   gzip $root_dir_path/SRC/install.$platform/initrd
-  chmod -w -R $root_dir_path/SRC/install.$platform/
+  chmod -Rf 755 $root_dir_path/SRC
+  chmod -w -Rf $root_dir_path/SRC/install.$platform/
 
   md5sum $(find -follow -type f) >$root_dir_path/SRC/md5sum.txt
 
@@ -127,7 +128,7 @@ function inject_preseed_cfg_PRSD_ISO() {
 # Parameters
 # @$1 - Preseed conf file path
 #
-function inject_user_pwds_PRSD_ISO() {
+inject_user_pwds_PRSD_ISO() {
   local passwd_prd="password0"
 
   if [[ -x mkpasswd ]]; then

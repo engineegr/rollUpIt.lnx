@@ -57,7 +57,7 @@ main() {
   tar xzvf debian10.1_netboot.tar.gz
   cp -Rfv debian-installer/amd64/{initrd.gz,linux} "${tftpboot_fp}/netboot/${distr_name}"
   cd ..
-  rm -Rf "${tmp_dit}"
+  rm -Rf "${tmp_dir}"
 
   cp -fv "${preseed_cfg_fp}" "${distr_dst}"
   cp -v /usr/share/syslinux/{pxelinux.0,menu.c32,memdisk,mboot.c32,chain.c32} "$tftpboot_fp"
