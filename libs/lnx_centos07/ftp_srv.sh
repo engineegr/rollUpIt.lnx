@@ -16,7 +16,7 @@ setUp_FTPSRV_RUI() {
     createFtpUser_SM_RUI "$ftp_user"
   fi
 
-  cat <<-EOF > $ftp_cfg
+  cat <<-EOF >$ftp_cfg
 anonymous_enable=NO
 local_enable=YES
 write_enable=YES
@@ -58,12 +58,12 @@ pasv_max_port=31000
 # ssl_enable=YES
 EOF
 
-deployCfg_FTPSRV_RUI
+  deployCfg_FTPSRV_RUI
 
-SELinux_setUp_FTPSRV_RUI
-fw_setUp_FTPSRV_RUI
+  SELinux_setUp_FTPSRV_RUI
+  fw_setUp_FTPSRV_RUI
 
-printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function $FUNCNAME ${END_ROLLUP_IT}\n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function $FUNCNAME ${END_ROLLUP_IT}\n"
 }
 
 SELinux_setUp_FTPSRV_RUI() {
@@ -83,8 +83,8 @@ deployCfg_FTPSRV_RUI() {
   local -r root_ftp_cfg="/etc/vsftpd/vsftpd.conf"
   local -r ftp_cfg="resources/ftp/vsftpd.conf"
 
-  sudo systemctl stop vsftpd 
-  sudo systemctl daemon-reload 
+  sudo systemctl stop vsftpd
+  sudo systemctl daemon-reload
 
   sudo mv "$root_ftp_cfg" "${root_ftp_cfg}.default"
   sudo cp "$ftp_cfg" "/etc/vsftpd/"

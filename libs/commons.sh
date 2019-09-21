@@ -179,7 +179,6 @@ runInBackground_COMMON_RUI() {
   eval "$rcmd" &>"$ROOT_DIR_ROLL_UP_IT/log/${FUNCNAME}_$(date +%H%M_%Y%m%N)_stdout.log" &
   waitForCmnd_COMMON_RUI $! "$rcmd"
 
-  printf "${END_ROLLUP_IT}"
   printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }
 
@@ -190,8 +189,7 @@ waitForCmnd_COMMON_RUI() {
   local -r __rcmd="$2"
 
   printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command: ${__rcmd} pid: [${__pid}] ${END_ROLLUP_IT} \n"
-  printf "${MAG_ROLLUP_IT}"
-  progressBar "${__pid}" 120 "▇" "100" "Run command: ${__rcmd}"
+  progressBar "${__pid}" "20" "▇" "100" "Run command: ${__rcmd}"
 }
 
 #:
@@ -249,6 +247,7 @@ runCmdListInBackground_COMMON_RUI() {
 
     WAIT_CHLD_CMD_IND_COMMON_RUI=$count
     eval "waitForCmnd_COMMON_RUI ${__epid} \"${chld_cmd}\"" &
+    sleep 1
     wait ${__epid}
     let ++count
   done
@@ -273,7 +272,7 @@ extractCmndName_COMMON_RUI() {
 #:
 onInterruption_COMMON_RUI() {
   local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
   # echo "Param 1: $1"
   # echo "Param 2: $2"
   # echo "Param 3: $3"
@@ -293,6 +292,7 @@ onInterruption_COMMON_RUI() {
   resetChldBgCommandList_COMMON_RUI
 
   showCu_TTY_RUI
+  rm -Rvf /tmp/ci-*
   printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }
 
@@ -320,7 +320,7 @@ resetChldBgCommandList_COMMON_RUI() {
 
 resetGlobalMarkers_COMMON_RUI() {
   local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   WAIT_CHLD_CMD_IND_COMMON_RUI="-1"
   CHLD_LOG_DIR_COMMON_RUI="NA"
@@ -391,6 +391,8 @@ displayBgChldErroLog_COMMON_RUI() {
   if [[ -e ${__stderr_fl} && -n $(cat ${__stderr_fl}) ]]; then
     printf "${RED_ROLLUP_IT} ${__debug_prefix} Error: command failed [${__cmd_name}] ${END_ROLLUP_IT}\n" >&2
     echo "${RED_ROLLUP_IT} See details: \n $(cat ${__stderr_fl}) ${END_ROLLUP_IT}\n" >&2
+  else
+    printf "${RED_ROLLUP_IT} ${__debug_prefix} Error: no error log found [${__stderr_fl}] ${END_ROLLUP_IT}\n" >&2
   fi
 
   printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
@@ -404,6 +406,7 @@ displayBgChldErroLog_COMMON_RUI() {
 #: arg5 - head msg
 #:
 progressBar() {
+  printf "${MAG_ROLLUP_IT}"
   hideCu_TTY_RUI
   if [[ -z "$1" || -z "$2" || -z "$3" || -z "$4" || -z "$5" ]]; then
     onErrors_SM_RUI "NULL arguments"
@@ -414,12 +417,12 @@ progressBar() {
   local -r len="$4"
   local -r header="$5"
   local track_str=""
-  local -r xmax=$(($len + 10))
+  local -r xmax=$(($len + 13))
   local -r ymax=$(max_y_TTY_RUI)
   for ((i = 0; i < len; i++)); do
     track_str+="$sym"
   done
-  echo "$header"
+  printf "\n$header\n"
   local speed=$(echo "$len/$duration" | bc -l) # sym/sec
   # steps
   local sf="0.0"
@@ -440,25 +443,34 @@ progressBar() {
 
   to_xy_TTY_RUI $sx $sy
   printf "[ "
-  while kill -0 $pid 2>/dev/null; do
-    if (($(echo "$pwf < $duration" | bc -l))); then
-      pwf=$(echo "$pwf+$st" | bc -l)
-      # steps
-      sf=$(echo "$speed*$pwf" | bc -l)
-      s=$(echo $sf | awk '{print int($1)}')
-      printf "${track_str:s%len:1}"
-      save_cu_TTY_RUI
+  # sleep 1
+  if [ "$(isProcessRunning_COMMON_RUI $pid)" == "false" ]; then
+    printf "${track_str}"
+    to_xy_TTY_RUI $(($xmax - 9)) $sy
+    printf "] 100 [%%]"
+    printf "\n\n${YEL_ROLLUP_IT} [Warrning] $header: the command had been already completed before${END_ROLLUP_IT}\n\n"
+  else
+    while kill -0 $pid 2>/dev/null; do
+      if (($(echo "$pwf < $duration" | bc -l))); then
+        pwf=$(echo "$pwf+$st" | bc -l)
+        # steps
+        sf=$(echo "$speed*$pwf" | bc -l)
+        s=$(echo $sf | awk '{print int($1)}')
+        printf "${track_str:s%len:1}"
+        save_cu_TTY_RUI
 
-      to_xy_TTY_RUI $(($xmax - 10)) $sy
-      pwf=$(echo "$pwf" | awk '{ printf "%.7f",$1 }')
-      percentage_f=$(echo "($pwf/$duration)*100" | bc -l)
-      percentage=$(echo "${percentage_f}" | awk '{print int($1)}')
-      printf "] %2d [%%]" "$percentage"
-      restore_cu_TTY_RUI
-      sleep $st
-    fi
-  done
+        to_xy_TTY_RUI $(($xmax - 9)) $sy
+        pwf=$(echo "$pwf" | awk '{ printf "%.7f",$1 }')
+        percentage_f=$(echo "($pwf/$duration)*100" | bc -l)
+        percentage=$(echo "${percentage_f}" | awk '{print int($1)}')
+        printf "] %2d [%%]" "$percentage"
+        restore_cu_TTY_RUI
+        sleep $st
+      fi
+    done
+  fi
   showCu_TTY_RUI
+  printf "${END_ROLLUP_IT}"
 }
 
 #:
@@ -502,4 +514,17 @@ backPrint_COMMON_RUI() {
 ${msg_str}
 EOF
   printf "\n"
+}
+
+getShLogName_COMMON_RUI() {
+  if [[ -z "$1" ]]; then
+    onErrors_SM_RUI "NULL arguments"
+  fi
+
+  local -r start_tm="$(date +%Y%m_%H%M%S%N)"
+  local -r path_to_sh="$1"
+  local tmp="${path_to_sh##*/}"
+  local log_fl="${tmp%%.sh}_${start_tm}.log"
+
+  echo -n "${log_fl}"
 }

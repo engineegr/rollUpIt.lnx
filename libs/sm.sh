@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#
+# ----- Basic System Management Scripts ------- #
+#
+
 isDebian_SM_RUI() {
   [[ -n "$(cat /etc/*-release | egrep "Debian")" ]] && echo "true" || echo "false"
 }
@@ -7,10 +11,6 @@ isDebian_SM_RUI() {
 isCentOS_SM_RUI() {
   [[ -n "$(cat /etc/*-release | egrep "CentOS")" ]] && echo "true" || echo "false"
 }
-
-#
-# ----- Basic System Management Scripts ------- #
-#
 
 #
 # arg0 - username
@@ -61,11 +61,10 @@ skeletonUserHome_SM_RUI() {
 
   export PATH="$PATH:/usr/local/bin"
 
-  local -r user_home_dir="/home/$username"
+  [[ "$username" == "root" ]] && user_home_dir="/root" || user_home_dir="/home/$username"
+
   install_vim_shfmt_INSTALL_RUI "${user_home_dir}"
   install_bgp_INSTALL_RUI "${user_home_dir}"
-
-  [[ "$username" == "root" ]] && user_home_dir="/root"
 
   if [[ ! -d "${user_home_dir}/.dotfiles" ]]; then
     cd "$user_home_dir"
@@ -135,7 +134,7 @@ prepareSudoersd_SM_RUI() {
   fi
 
   local -r sudoers_file="/etc/sudoers"
-  local -r sudoers_addon="/etc/sudoers.d/admins.$(hostname)"
+  local -r sudoers_addon="/etc/sudoers.d/local_admins"
   local -r sudoers_templ="$(
     cat <<-EOF
 User_Alias	LOCAL_ADM_GROUP = $1
@@ -149,6 +148,7 @@ EOF
   if [[ ! -f $sudoers_addon ]]; then
     touch $sudoers_addon
     echo "$sudoers_templ" >$sudoers_addon
+    chmod 0440 ${sudoers_addon}
   else
     # add new user
     local replace_str=""
@@ -203,14 +203,14 @@ createAdmUser_SM_RUI() {
       exit 1
     fi
 
-    #    echo "$user_name:$pwd" | chpasswd -e 2>log/stderr.log
-    #    rc=$?
-    #    if [[ $rc -ne 0 ]]; then
-    #      errs="$(cat stderr.log)"
-    #      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ] Delete the user ${END_ROLLUP_IT} \n" >&2
-    #      userdel -r $user_name
-    #      exit 1
-    #    fi
+    echo "$user_name:$pwd" | chpasswd -e 2>log/stderr.log
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      errs="$(cat stderr.log)"
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ] Delete the user ${END_ROLLUP_IT} \n" >&2
+      userdel -r $user_name
+      exit 1
+    fi
 
     chage -d 0 "$user_name" 2>log/stderr.log
     rc=$?
@@ -236,7 +236,6 @@ createAdmUser_SM_RUI() {
     else
       printf "$debug_prefix There is no "wheel" group \n"
       printf "$debug_prefix "isWheel" [ $isWheel ] \n"
-      exit 1
     fi
 
     if [[ -n "$isDevelop" ]]; then
@@ -393,6 +392,7 @@ installDefaults_SM_RUI() {
 
   local -r def_pkg_list=(
     "make" "ntp" "gcc" "git-core" "sudo" "git" "tcpdump" "wget" "lsof" "net-tools" "curl"
+    "python-dev"
   )
 
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI def_pkg_list \"\""
@@ -445,6 +445,16 @@ baseSetup_SM_RUI() {
   local locale_str=$(doGetLocaleStr)
   setLocale_SM_RUI ${locale_str}
   setupNtpd_SM_RUI
+  setupUnattendedUpdates
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+setupUnattendedUpdates() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  doSetupUnattendedUpdates
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }

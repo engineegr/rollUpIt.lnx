@@ -146,6 +146,45 @@ install_tmux_INSTALL_RUI() {
   fi
 }
 
+install_vim8_INSTALL_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  if [ -e "/usr/local/bin/vim" ]; then
+    printf "$debug_prefix ${CYN_ROLLUP_IT} vim8 has been already  installed ${END_ROLLUP_IT} \n"
+  else
+    local -r tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX)
+    if [ -d "$tmp_dir" ]; then
+      rm -Rf "$tmp_dir"
+    fi
+
+    mkdir ${tmp_dir}
+    cd ${tmp_dir}
+
+    # Get source
+    git clone https://github.com/vim/vim && cd vim
+
+    # OPTIONAL: configure to provide a comprehensive vim - You can skip this step
+    #  and go  straight to `make` which will configure, compile and link with
+    #  defaults.
+
+    ./configure \
+      --prefix=/usr/local \
+      --enable-multibyte \
+      --enable-pythoninterp=yes \
+      --with-python-config-dir=/usr/lib/python2.7/config-x86_64-linux-gnu \
+      --with-python3-config-dir=/usr/lib64/python3.6/config-3.6m-x86_64-linux-gnu \
+      --with-python3-config-dir=/usr/local/lib/python3.7/config-3.7m-x86_64-linux-gnu \
+      --enable-fail-if-missing
+
+    # Build and install
+    make && sudo make install
+    rm -Rf ${tmp_dir}
+
+    printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+  fi
+}
+
 #:
 #: Install Python3.7 (based on @link https://tecadmin.net/install-python-3-7-on-centos/
 #: and https://linuxize.com/post/how-to-install-python-3-7-on-debian-9/)
