@@ -10,6 +10,10 @@ CHLD_STARTTM_COMMON_RUI="NA"
 
 declare -a CHLD_BG_CMD_LIST_COMMON_RUI
 
+#:
+#: Global var: suppress progress bar (used for PXE installation)
+#:
+SUPPRESS_PB_COMMON_RUI="FALSE"
 #
 # arg0 - pkg_name
 # arg1 - quiet or not installation
@@ -176,39 +180,16 @@ runInBackground_COMMON_RUI() {
   local -r rcmd=$@
 
   # start command
-  eval "$rcmd" &>"$ROOT_DIR_ROLL_UP_IT/log/${FUNCNAME}_$(date +%H%M_%Y%m)_stdout.log" &
-  waitForCmnd_COMMON_RUI $!
-
-  printf "${END_ROLLUP_IT}"
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
-  return $?
-}
-
-waitForCmnd_COMMON_RUI() {
-  checkNonEmptyArgs_COMMON_RUI $@
-
-  local -r rc_pid=$1
-  local -r cols=$(tput cols)+1
-
-  printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command $rcmd ${END_ROLLUP_IT} \n"
-  printf "${MAG_ROLLUP_IT}"
-  while kill -0 $rc_pid 2>/dev/null; do
-    printf "!"
-    sleep .1
-  done
-}
-
-#:
-#: Wait a command running in background
-#: arg0 - cmnd_pid
-#: TODO: need to rebuild (tput gives incorrect cursor positions)
-#:
-progressBarForCmnd_COMMON_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  eval "$rcmd" &>"$ROOT_DIR_ROLL_UP_IT/log/${FUNCNAME}_$(date +%H%M_%Y%m%N)_stdout.log" &
+  local -r __pid="$!"
+  if [[ ${SUPPRESS_PB_COMMON_RUI} == "FALSE" ]]; then
+    progressBar "${__pid}" "20" "▇" "100" "Run command: ${rcmd}"
+  else
+    printf "\n $debug_prefix ${YEL_ROLLUP_IT} Running the command... : [${rcmd}] ${END_ROLLUP_IT} \n"
+    wait ${__pid}
+  fi
 
   printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
-  return $?
 }
 
 #:
@@ -265,6 +246,10 @@ runCmdListInBackground_COMMON_RUI() {
     printf "${GRN_ROLLUP_IT} Debug: Cmd name [${__cmd_name}] ${END_ROLLUP_IT}\n"
 
     WAIT_CHLD_CMD_IND_COMMON_RUI=$count
+
+    if [[ ${SUPPRESS_PB_COMMON_RUI} == "FALSE" ]]; then
+      eval "progressBar "${__epid}" "20" "▇" "100" \"Run command: ${chld_cmd}\"" &
+    fi
     wait ${__epid}
     let ++count
   done
@@ -289,20 +274,13 @@ extractCmndName_COMMON_RUI() {
 #:
 onInterruption_COMMON_RUI() {
   local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  #  local param_array="$*"
-  #  for i in "${param_array[@]}"; do
-  #    echo "Param: $i "
-  #  done
-
-  echo "Param 1: $1"
-  echo "Param 2: $2"
-  echo "Param 3: $3"
-  echo "Param 4: $4"
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  # echo "Param 1: $1"
+  # echo "Param 2: $2"
+  # echo "Param 3: $3"
+  # echo "Param 4: $4"
   # <interruption_cmd> <rc> <line> <last_command>
   local __last_call="$4"
-  echo "Param 4: $__last_call"
   local __bn="$(echo ${__last_call} | cut -d' ' -f1)"
   local __rc="$(echo ${__last_call} | cut -d' ' -f2)"
   local __err_line="$(echo ${__last_call} | cut -d' ' -f3)"
@@ -315,6 +293,8 @@ onInterruption_COMMON_RUI() {
   fi
   resetChldBgCommandList_COMMON_RUI
 
+  showCu_TTY_RUI
+  rm -Rvf /tmp/ci-*
   printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }
 
@@ -342,7 +322,7 @@ resetChldBgCommandList_COMMON_RUI() {
 
 resetGlobalMarkers_COMMON_RUI() {
   local __debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   WAIT_CHLD_CMD_IND_COMMON_RUI="-1"
   CHLD_LOG_DIR_COMMON_RUI="NA"
@@ -413,7 +393,140 @@ displayBgChldErroLog_COMMON_RUI() {
   if [[ -e ${__stderr_fl} && -n $(cat ${__stderr_fl}) ]]; then
     printf "${RED_ROLLUP_IT} ${__debug_prefix} Error: command failed [${__cmd_name}] ${END_ROLLUP_IT}\n" >&2
     echo "${RED_ROLLUP_IT} See details: \n $(cat ${__stderr_fl}) ${END_ROLLUP_IT}\n" >&2
+  else
+    printf "${RED_ROLLUP_IT} ${__debug_prefix} Error: no error log found [${__stderr_fl}] ${END_ROLLUP_IT}\n" >&2
   fi
 
   printf "\n${__debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+}
+
+#:
+#: arg1 - process id
+#: arg2 - duration (sec)
+#: arg3 - sym
+#: arg4 - len
+#: arg5 - head msg
+#:
+progressBar() {
+  printf "${MAG_ROLLUP_IT}"
+  hideCu_TTY_RUI
+  if [[ -z "$1" || -z "$2" || -z "$3" || -z "$4" || -z "$5" ]]; then
+    onErrors_SM_RUI "NULL arguments"
+  fi
+  local -r pid="$1"
+  local -r duration="$2"
+  local -r sym="$3"
+  local -r len="$4"
+  local -r header="$5"
+  local track_str=""
+  local -r xmax=$(($len + 13))
+  local -r ymax=$(max_y_TTY_RUI)
+  for ((i = 0; i < len; i++)); do
+    track_str+="$sym"
+  done
+  printf "\n$header\n"
+  local speed=$(echo "$len/$duration" | bc -l) # sym/sec
+  # steps
+  local sf="0.0"
+  local s=0
+  # 1 unit = sleep time
+  local st=$(echo "$duration/$len" | bc -l)
+  # passed way
+  local pwf=0.0
+  local percentage_f=0.0
+  local percentage=0.0
+  local -r sx=$(cpos_x_TTY_RUI)
+  local sy=$(cpos_y_TTY_RUI)
+
+  if [ $ymax -le $sy ]; then
+    tput el
+    sy=$(cpos_y_TTY_RUI)
+  fi
+
+  to_xy_TTY_RUI $sx $sy
+  printf "[ "
+  # sleep 1
+  if [ "$(isProcessRunning_COMMON_RUI $pid)" == "false" ]; then
+    printf "${track_str}"
+    to_xy_TTY_RUI $(($xmax - 9)) $sy
+    printf "] 100 [%%]"
+    printf "\n\n${YEL_ROLLUP_IT} [Warrning] $header: the command had been already completed before${END_ROLLUP_IT}\n\n"
+  else
+    while kill -0 $pid 2>/dev/null; do
+      if (($(echo "$pwf < $duration" | bc -l))); then
+        pwf=$(echo "$pwf+$st" | bc -l)
+        # steps
+        sf=$(echo "$speed*$pwf" | bc -l)
+        s=$(echo $sf | awk '{print int($1)}')
+        printf "${track_str:s%len:1}"
+        save_cu_TTY_RUI
+
+        to_xy_TTY_RUI $(($xmax - 9)) $sy
+        pwf=$(echo "$pwf" | awk '{ printf "%.7f",$1 }')
+        percentage_f=$(echo "($pwf/$duration)*100" | bc -l)
+        percentage=$(echo "${percentage_f}" | awk '{print int($1)}')
+        printf "] %2d [%%]" "$percentage"
+        restore_cu_TTY_RUI
+        sleep $st
+      fi
+    done
+  fi
+  showCu_TTY_RUI
+  printf "${END_ROLLUP_IT}"
+}
+
+#:
+#: Print format: <HEAD>...................................................<MSG>
+#: arg1 - head
+#: arg2 - msg
+#: arg3 - head color
+#: arg4 - msg color
+#: arg5 - isMirror
+#:
+backPrint_COMMON_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  # printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  if [[ -z "$1" || -z "$2" || -z "$3" || -z "$4" ]]; then
+    onErrors_SM_RUI "NULL arguments"
+  fi
+
+  local -r head_str="$1"
+  local -r msg_str="$2"
+  local -r head_clr="$3"
+  local -r msg_clr="$4"
+  local -r is_leadsp_mirror="${5-:"false"}"
+
+  local cy="$(cpos_y_TTY_RUI)"
+  printf "${head_clr}${head_str}${END_ROLLUP_IT}"
+  while IFS= read -r str; do
+    # str=$(printf "${msg_clr}${str}${END_ROLLUP_IT}" | xargs) # trim strings
+    local len=$(printf "%s" "$str" | wc -L)
+    local str_len=$((${max_x} - $len - 1))
+    to_xy_TTY_RUI ${str_len} $((cy - 1))
+
+    # mirror leading spaces/tabs in strings
+    if [ "${is_leadsp_mirror}" = "true" ]; then
+      local mstr="$(printf "%s" "$str" | sed -E 's/^(\s*)(.*)(\s*)$/\3\1\2/')"
+      printf "${msg_clr}%s${END_ROLLUP_IT}" "${mstr}"
+    else
+      printf "${msg_clr}%s${END_ROLLUP_IT}" "${str}"
+    fi
+    let ++cy
+  done <<EOF
+${msg_str}
+EOF
+  printf "\n"
+}
+
+getShLogName_COMMON_RUI() {
+  if [[ -z "$1" ]]; then
+    onErrors_SM_RUI "NULL arguments"
+  fi
+
+  local -r start_tm="$(date +%Y%m_%H%M%S%N)"
+  local -r path_to_sh="$1"
+  local tmp="${path_to_sh##*/}"
+  local log_fl="${tmp%%.sh}_${start_tm}.log"
+
+  echo -n "${log_fl}"
 }

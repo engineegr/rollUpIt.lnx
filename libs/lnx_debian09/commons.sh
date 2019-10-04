@@ -63,6 +63,8 @@ doRemovePkg_COMMON_RUI() {
 #:
 doInstallPkgList_COMMON_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Pkg: [$@] ${END_ROLLUP_IT} \n"
 
   eval "apt-get $@"
   onFailed_SM_RUI $? "$debug_prefix Error: yum installation failed "
