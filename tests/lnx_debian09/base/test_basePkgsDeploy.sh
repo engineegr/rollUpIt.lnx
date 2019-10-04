@@ -38,5 +38,5 @@ main() {
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-main $@ 2>&1 | tee "log/$(getShLogName_COMMON_RUI $0)"
+main $@ 2>&1 | tee "/var/log/$(getShLogName_COMMON_RUI $0)"
 exit 0

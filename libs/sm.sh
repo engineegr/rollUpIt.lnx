@@ -4,6 +4,8 @@
 # ----- Basic System Management Scripts ------- #
 #
 
+PXE_INSTALLATION_SM_RUI="FALSE"
+
 isDebian_SM_RUI() {
   [[ -n "$(cat /etc/*-release | egrep "Debian")" ]] && echo "true" || echo "false"
 }
@@ -31,13 +33,17 @@ prepareUser_SM_RUI() {
     printf "$debug_prefix The user doesn't exist \n"
     createAdmUser_SM_RUI "$1" "$2"
   else
-    printf "$debug_prefix The user exists. Copy skel config \n"
+    printf "$debug_prefix The user exists\n"
+    chage -d 0 "$1"
+    onFailed_SM_RUI "$?" "\nError: Can't force the user to change his password [chage -d 0 $1]\n"
   fi
   if [[ "$1" != "root" ]]; then
     prepareSudoersd_SM_RUI "$1"
   fi
 
-  doRunSkeletonUserHome_SM_RUI "$1"
+  if [[ ${PXE_INSTALLATION_SM_RUI} == "FALSE" ]]; then
+    doRunSkeletonUserHome_SM_RUI "$1"
+  fi
 
   prepareSSH_SM_RUI
 }
@@ -446,6 +452,7 @@ baseSetup_SM_RUI() {
   setLocale_SM_RUI ${locale_str}
   setupNtpd_SM_RUI
   setupUnattendedUpdates
+  upgradePip3_7
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
@@ -469,11 +476,27 @@ setupNtpd_SM_RUI() {
   if [ $(isDebian_SM_RUI) = "true" ]; then
     ntp_service_name="ntp"
   fi
+
+  #  if [ "${PXE_INSTALLATION_SM_RUI}" == "FALSE" ]; then
+  #    systemctl stop ${ntp_service_name}
+  #    onFailed_SM_RUI $? "Error: can't stop ntpd with [systemctl stop ntpd]. Exit."
+  #  fi
   systemctl stop ${ntp_service_name}
   onFailed_SM_RUI $? "Error: can't stop ntpd with [systemctl stop ntpd]. Exit."
 
+  #  if [[ "${PXE_INSTALLATION_SM_RUI}" == "FALSE" ]]; then
+  #    timedatectl set-timezone "Asia/Sakhalin"
+  #    onFailed_SM_RUI $? "Error: can't timezone [timedatectl set-timezone \"Asia/Sakhalin\"]. Exit."
+  #    systemctl enable ${ntp_service_name}
+  #    onFailed_SM_RUI $? "Error: can't stop ntpd with [systemctl stop ntpd]. Exit."
+  #  else
+  #    ln -sf "/usr/share/zoneinfo/Asia/Sakhalin" "/etc/localtime"
+  #    ln -sf "/lib/systemd/system/${ntp_service_name}.service" "/etc/systemd/system/multi-user.target.wants/${ntp_service_name}.service"
+  #  fi
   timedatectl set-timezone "Asia/Sakhalin"
+  onFailed_SM_RUI $? "Error: can't timezone [timedatectl set-timezone \"Asia/Sakhalin\"]. Exit."
   systemctl enable ${ntp_service_name}
+  onFailed_SM_RUI $? "Error: can't stop ntpd with [systemctl stop ntpd]. Exit."
 
   if [[ ! -e /etc/ntp.conf.orig ]]; then
     # comment existing ntp-servers
@@ -497,6 +520,15 @@ EOF
     onFailed_SM_RUI $? "Error: can't synchronize time with [ntpd -qa]. Exit."
   fi
 
+  #  if [[ "${PXE_INSTALLATION_SM_RUI}" == "FALSE" ]]; then
+  #    systemctl start ${ntp_service_name}
+  #    onFailed_SM_RUI $? "Error: can't start ntpd with [systemctl start ntpd]. Exit."
+  #    rc=$?
+  #    if [[ $rc -ne 0 ]]; then
+  #      printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't start ntpd with [systemctl start ntpd]. Exit. ${END_ROLLUP_IT} \n"
+  #      exit 1
+  #    fi
+  #  fi
   systemctl start ${ntp_service_name}
   onFailed_SM_RUI $? "Error: can't start ntpd with [systemctl start ntpd]. Exit."
   rc=$?

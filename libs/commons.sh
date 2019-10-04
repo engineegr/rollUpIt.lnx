@@ -10,6 +10,10 @@ CHLD_STARTTM_COMMON_RUI="NA"
 
 declare -a CHLD_BG_CMD_LIST_COMMON_RUI
 
+#:
+#: Global var: suppress progress bar (used for PXE installation)
+#:
+SUPPRESS_PB_COMMON_RUI="FALSE"
 #
 # arg0 - pkg_name
 # arg1 - quiet or not installation
@@ -177,19 +181,15 @@ runInBackground_COMMON_RUI() {
 
   # start command
   eval "$rcmd" &>"$ROOT_DIR_ROLL_UP_IT/log/${FUNCNAME}_$(date +%H%M_%Y%m%N)_stdout.log" &
-  waitForCmnd_COMMON_RUI $! "$rcmd"
+  local -r __pid="$!"
+  if [[ ${SUPPRESS_PB_COMMON_RUI} == "FALSE" ]]; then
+    progressBar "${__pid}" "20" "▇" "100" "Run command: ${rcmd}"
+  else
+    printf "\n $debug_prefix ${YEL_ROLLUP_IT} Running the command... : [${rcmd}] ${END_ROLLUP_IT} \n"
+    wait ${__pid}
+  fi
 
   printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
-}
-
-waitForCmnd_COMMON_RUI() {
-  checkNonEmptyArgs_COMMON_RUI $@
-
-  local -r __pid=$1
-  local -r __rcmd="$2"
-
-  printf "$debug_prefix ${YEL_ROLLUP_IT} Start the command: ${__rcmd} pid: [${__pid}] ${END_ROLLUP_IT} \n"
-  progressBar "${__pid}" "20" "▇" "100" "Run command: ${__rcmd}"
 }
 
 #:
@@ -246,8 +246,10 @@ runCmdListInBackground_COMMON_RUI() {
     printf "${GRN_ROLLUP_IT} Debug: Cmd name [${__cmd_name}] ${END_ROLLUP_IT}\n"
 
     WAIT_CHLD_CMD_IND_COMMON_RUI=$count
-    eval "waitForCmnd_COMMON_RUI ${__epid} \"${chld_cmd}\"" &
-    sleep 1
+
+    if [[ ${SUPPRESS_PB_COMMON_RUI} == "FALSE" ]]; then
+      eval "progressBar "${__epid}" "20" "▇" "100" \"Run command: ${chld_cmd}\"" &
+    fi
     wait ${__epid}
     let ++count
   done

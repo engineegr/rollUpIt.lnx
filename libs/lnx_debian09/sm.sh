@@ -5,6 +5,7 @@ doUpdate_SM_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
   apt-get -y update
+  # need to avoid grub-pc dialog: see https://github.com/hashicorp/vagrant/issues/289
   echo "grub-pc grub-pc/install_devices_disks_changed multiselect /dev/sda" | debconf-set-selections
   echo "grub-pc grub-pc/install_devices multiselect /dev/sda1" | debconf-set-selections
 
@@ -13,12 +14,6 @@ doUpdate_SM_RUI() {
     "bc" "debconf-utils" "unattended-upgrades" "apt-listchanges"
   )
   installPkgList_COMMON_RUI pre_pkgs ""
-  #  for i in "${pre_pkgs[@]}"; do
-  #    # apt-get -y install "$i"
-  #    installPkg_COMMON_RUI "$i" ""
-  #  done
-
-  # need to avoid grub-pc dialog: see https://github.com/hashicorp/vagrant/issues/289
   onFailed_SM_RUI $? "Failed apt-get preparation"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
@@ -38,15 +33,16 @@ doInstallCustoms_SM_RUI() {
   local -r pkg_list=(
     "python3" "python3-pip" "python3-venv" "tmux" "vim" "bc"
     "build-essential" "zlib1g-dev" "libncurses5-dev" "libgdbm-dev"
-    "libnss3-dev" "libssl-dev" "libreadline-dev" "libffi-dev" "wget"
-    "ntpdate" "python-dev" "ruby-dev"
+    "libnss3-dev" "libssl-dev" "libreadline-dev" "libffi-dev"
+    "ntpdate" "python-dev" "ruby-dev" "libbz2-dev" "libsqlite3-dev" "dbus"
+    "llvm" "libncursesw5-dev" "xz-utils" "tk-dev" "liblzma-dev" "python-openssl"
   )
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""
 
-  local -r deps_list=(
-    "install_python3_7_INSTALL_RUI"
-    "install_golang_INSTALL_RUI"
-  )
+  #  local -r deps_list=(
+  #    "install_python3_7_INSTALL_RUI"
+  #    "install_golang_INSTALL_RUI"
+  #  )
 
   local -r cmd_list=(
     "install_tmux_INSTALL_RUI"
@@ -55,7 +51,9 @@ doInstallCustoms_SM_RUI() {
     "install_rcm_INSTALL_RUI"
   )
 
-  runCmdListInBackground_COMMON_RUI deps_list
+  runInBackground_COMMON_RUI "install_python3_7_INSTALL_RUI"
+  runInBackground_COMMON_RUI "install_golang_INSTALL_RUI"
+  # runCmdListInBackground_COMMON_RUI deps_list
   runCmdListInBackground_COMMON_RUI cmd_list
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
@@ -220,6 +218,10 @@ EOFF
   else
     onFailed_SM_RUI $? "Error: there is no /etc/apt/apt.conf.d/50unattended-upgrades"
   fi
+
+  echo unattended-upgrades unattended-upgrades/enable_auto_updates boolean true | debconf-set-selections
+  dpkg-reconfigure -f noninteractive unattended-upgrades
+  onFailed_SM_RUI $? "Error: can't generate /etc/apt/apt.conf.d/20auto-upgrades"
 
   if [ -f "${uauto_upgrades_fp}" ]; then
     cp "${uauto_upgrades_fp}" "${uauto_upgrades_fp}.orig"

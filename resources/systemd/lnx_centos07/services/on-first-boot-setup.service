@@ -1,0 +1,20 @@
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Run on first boot
+After=ntpd.service
+# see https://unix.stackexchange.com/questions/216045/systemd-configure-unit-file-so-that-login-screen-is-not-shown-until-service-exi
+Before=getty@tty1.service getty@tty2.service getty@tty3.service getty@tty4.service getty@tty5.service getty@tty6.service
+
+[Service]
+# We are sure that the next job  won't be started untill the service is forked and exits unless systemctl will report failure.
+Type=oneshot
+ExecStart=/usr/local/src/post-scripts/rollUpIt.lnx/tests/base/test_runOnFirstBoot.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -4,12 +4,12 @@ doUpdate_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-  installEpel_SM_RUI
   runInBackground_COMMON_RUI "yum -y update --exclude=kernel"
   runInBackground_COMMON_RUI "yum -y upgrade"
   runInBackground_COMMON_RUI "yum -y groupinstall \"Development Tools\""
   # needs to install python3.6
   runInBackground_COMMON_RUI "yum install -y https://centos7.iuscommunity.org/ius-release.rpm; yum -y update --exclude=kernel"
+  # installEpel_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
@@ -20,6 +20,13 @@ doUpdate_SM_RUI() {
 doInstallCustoms_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
+  local -r pkg_list=(
+    "zlib-devel" "bzip2" "bzip2-devel" "openssl-devel" "libffi-devel"
+    "ncurses-devel" "kernel-devel" "python-devel" "yum-utils" "python-pip"
+    "ncurses" "ncurses-devel" "ncurses-libs" "ncurses-base" "python-libs"
+    "cmake3"
+  )
+  runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""
 
   local -r deps_list=(
     "install_python3_7_INSTALL_RUI"
@@ -32,6 +39,9 @@ doInstallCustoms_SM_RUI() {
     "install_grc_INSTALL_RUI"
     "install_rcm_INSTALL_RUI"
   )
+
+  # runInBackground_COMMON_RUI "install_python3_7_INSTALL_RUI"
+  # runInBackground_COMMON_RUI "install_golang_INSTALL_RUI"
 
   runCmdListInBackground_COMMON_RUI deps_list
   runCmdListInBackground_COMMON_RUI cmd_list
@@ -89,6 +99,14 @@ doRunSkeletonUserHome_SM_RUI() {
 doSetupUnattendedUpdates() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
+
+  if [ -f "/etc/yum/yum-cron.conf" ]; then
+    sed -i -E 's/^(email_to.*=).*$/\1gonzo.soc@gmail.com/g' "/etc/yum/yum-cron.conf"
+    systemctl enable yum-cron
+    systemctl start yum-cron
+  else
+    onFailed_SM_RUI $? "Error: there is no /etc/yum/yum-cron.conf"
+  fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
