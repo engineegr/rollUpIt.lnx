@@ -5,8 +5,8 @@ set -o errexit
 set -o nounset
 set -m
 
-# ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
-ROOT_DIR_ROLL_UP_IT="/usr/local/src/rollUpIt.lnx"
+ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
+# ROOT_DIR_ROLL_UP_IT="/usr/local/src/rollUpIt.lnx"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"
@@ -27,17 +27,16 @@ main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  local -r user="likhobabin_im"
-  local -r pwd='saAWeCFm03FjY'
   getSysInfo_COMMON_RUI
+  printf "${debug_prefix} ${GRN_ROLLUP_IT} LOG path: "$(getShLogName_COMMON_RUI $0)" ${END_ROLLUP_IT}\n"
 
-  installPackages_SM_RUI
-  baseSetup_SM_RUI
-  prepareUser_SM_RUI "$user" "$pwd"
+  local -r cmd_list=(
+    "install_vim8_INSTALL_RUI"
+  )
+  runCmdListInBackground_COMMON_RUI cmd_list
 
-  clearScreen_TTY_RUI
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-main $@
+main $@ 2>&1 | tee "/var/log/$(getShLogName_COMMON_RUI $0)"
 exit 0
