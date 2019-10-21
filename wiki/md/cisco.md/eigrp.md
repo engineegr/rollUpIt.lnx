@@ -16,7 +16,6 @@ Example 001. Routes in the topology table
 ![Routes in the topology table](https://www.cisco.com/c/dam/en/us/support/docs/ip/enhanced-interior-gateway-routing-protocol-eigrp/16406-eigrp-toc-03.gif "Routes in the topology table")
 
 Explanation: 
-
 There are two routes to **Network A** from *Router One*: **one** through *Router Two* with a metric of **46789376** and another through *Router Four* with a metric of **20307200**. *Router One* chooses the lower of these two metrics as its route to Network A, and this metric becomes the **feasible distance**. Next, let us look at the path through Router Two to see if it qualifies as a feasible successor. The **reported distance** from *Router Two* is 46277376, which is **higher** than the feasible distance - so this path is not a **feasible successor**. If you were to look in the topology table of Router One at this point (using `show ip eigrp topology`), you would **only** see one entry for **Network A** - through *Router Four*. (In reality there are **two entries** in the *topology table* at Router One, but **only** one will be a feasible successor, so the other will not be displayed in `show ip eigrp topology`; you can see the routes that are not feasible successors using `show ip eigrp topology all-links`)
 
 2. ##### About Hello, Hold interval on high- and low- bandwdith links

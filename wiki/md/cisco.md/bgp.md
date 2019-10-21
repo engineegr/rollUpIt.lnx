@@ -129,10 +129,13 @@ interface Loopback0
 router bgp 100
  bgp log-neighbor-changes
  neighbor 7.0.0.2 remote-as 100
+ neighbor 7.0.0.2 ebgp-multihop 2
  neighbor 7.0.0.2 update-source Loopback0
  neighbor 7.0.0.3 remote-as 100
+ neighbor 7.0.0.3 ebgp-multihop 2
  neighbor 7.0.0.3 update-source Loopback0
 ```
+[!Importance] `ebgp-multihop` must be used in case of **Loopback** interfaces!!!
 
 6. ##### Multihop
  - to connect two neighbors that don't have direct connection;
@@ -161,7 +164,7 @@ int loopback 0
 ip address 150.10.1.1 255.255.255.0 
 router bgp 100 
 neighbor 160.10.1.1 remote-as 200 
-neighbor 160.10.1.1 ebgp-multihop 
+neighbor 160.10.1.1 ebgp-multihop 2
 neighbor 160.10.1.1 update-source loopback 0 
 network 150.10.0.0 
  
@@ -173,7 +176,7 @@ ip address 160.10.1.1 255.255.255.0
 router bgp 200 
 neighbor 150.10.1.1 remote-as 100 
 neighbor 150.10.1.1 update-source loopback 0 
-neighbor 150.10.1.1 ebgp-multihop 
+neighbor 150.10.1.1 ebgp-multihop 2
 network 160.10.0.0 
  
 ip route 150.10.0.0 255.255.0.0 1.1.1.1 

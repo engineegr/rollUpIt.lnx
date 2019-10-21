@@ -99,6 +99,24 @@
 
     `grub-crypt --sha-512` - to generate an encrypted password
 
+    *How to sync two folders?*
+
+    If you want the contents of folders A and B to be the same, put /home/user/A/ (with the slash) as the source. This takes not the folder A but all of it's content and puts it into folder B. Like this:
+
+    `rsync -avut --delete "/home/user/A/" "/home/user/B"`
+    where
+
+    -a Do the sync preserving all filesystem attributes
+    
+    -v run verbosely
+    
+    -u only copy files with a newer modification time (or size difference if the times are equal)
+    
+
+    --delete delete the files in target folder that do not exist in the source
+    
+    Manpage: https://download.samba.org/pub/rsync/rsync.html
+
     >[!Note]:
     >1. [25 Question on the job review] (https://habr.com/ru/post/280093/)
     >2.[About GPT/MBR](https://www.howtogeek.com/193669/whats-the-difference-between-gpt-and-mbr-when-partitioning-a-drive/)

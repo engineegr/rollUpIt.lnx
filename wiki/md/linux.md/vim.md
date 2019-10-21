@@ -348,6 +348,17 @@
 
 - Open a file via pipe: `vim "$(locate updatedb | head -1)"`
 
+13. ##### Setup vim for python develop
+
+- [YouCompleteMe](https://github.com/ycm-core/YouCompleteMe)
+
+Installation: `Plugin 'Valloric/YouCompleteMe'`
+Compile (use a reference python exe (not compiled one)):
+`python install.py --clang-completer` where install.py locates in *.vim/bundle/YouCompleteMe*
+
+>[!link]
+>1. [Setup vim for python develop] (https://realpython.com/vim-and-python-a-match-made-in-heaven/#auto-complete)
+
 
 
 
