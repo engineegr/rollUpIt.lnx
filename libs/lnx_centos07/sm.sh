@@ -8,7 +8,11 @@ doUpdate_SM_RUI() {
   runInBackground_COMMON_RUI "yum -y upgrade"
   runInBackground_COMMON_RUI "yum -y groupinstall \"Development Tools\""
   # needs to install python3.6
-  runInBackground_COMMON_RUI "yum install -y https://centos7.iuscommunity.org/ius-release.rpm; yum -y update --exclude=kernel"
+  printf "${debug_prefix} $(isPkgInstalled_COMMON_RUI 'ius-release') "
+  # if we don't check it will produce an error var/tmp/yum-root-qrZ02z/i-release.rpm: не обновляет установленный пакет. Ошибка: выполнять нечего.
+  if [ "$(isPkgInstalled_COMMON_RUI 'ius-release')" = 'false' ]; then
+    runInBackground_COMMON_RUI "yum install -y https://centos7.iuscommunity.org/ius-release.rpm"
+  fi
   # installEpel_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
@@ -21,8 +25,8 @@ doInstallCustoms_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
   local -r pkg_list=(
-    "zlib-devel" "bzip2" "bzip2-devel" "openssl-devel" "libffi-devel"
-    "ncurses-devel" "kernel-devel" "python-devel" "yum-utils" "python-pip"
+    "zlib-devel" "bzip2" "bzip2-devel" "openssl-devel" "libffi-devel" "yum-cron"
+    "yum-utils" "ncurses-devel" "kernel-devel" "python-devel" "python-pip"
     "ncurses" "ncurses-devel" "ncurses-libs" "ncurses-base" "python-libs"
     "cmake3"
   )

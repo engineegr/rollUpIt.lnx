@@ -1,0 +1,11 @@
+XDG_SESSION_ID=4
+SHELL=/bin/sh
+USER=root
+PATH=/usr/bin:/bin
+PWD=/root
+LANG=ru_RU.utf8
+SHLVL=1
+HOME=/root
+LOGNAME=root
+XDG_RUNTIME_DIR=/run/user/0
+_=/usr/bin/env
