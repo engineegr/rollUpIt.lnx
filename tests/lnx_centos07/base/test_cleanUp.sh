@@ -8,8 +8,8 @@ set -m
 #:
 #: Clean up system based on @link https://medium.com/@getpagespeed/clear-disk-space-on-centos-6-11f966504ff9
 #:
-# ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
-ROOT_DIR_ROLL_UP_IT="/usr/local/src/rollUpIt.lnx"
+ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
+# ROOT_DIR_ROLL_UP_IT="/usr/local/src/rollUpIt.lnx"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"

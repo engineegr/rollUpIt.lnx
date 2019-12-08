@@ -1,7 +1,5 @@
 #!/bin/bash
 
-PATH=/usr/sbin:/sbin:/bin:/usr/bin
-
 ############################################
 ### Configuring Iptables Basic Rules #######
 ############################################
@@ -10,7 +8,18 @@ set -o errexit
 # To be failed when it tries to use undeclare variables
 set -o nounset
 
-function installFw_FW_RUI() {
+help_FW_RUI() {
+  echo "Usage:" >&2
+  echo "-h - print help" >&2
+  echo "--install - install <iptables-persistent> and <ip-set>" >&2
+  echo "--wan - WAN (format: --wan int=... sn=... addr=... --lan int=... sn=... addr=...)" >&2
+  echo "--lan - LAN (format: --wan int=... sn=... addr=... --lan int=... sn=... addr=...)" >&2
+  echo "--reset - reset rules" >&2
+  echo "--lf - list filter rules" >&2
+  echo "--ln - list nat rules" >&2
+}
+
+installFw_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -20,7 +29,7 @@ function installFw_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-function configFwRules_FW_RUI() {
+configFwRules_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -37,10 +46,12 @@ function configFwRules_FW_RUI() {
 }
 
 #
-# arg0 - wlan nic
-# arg1 - wlan ip
+# arg1 - wlan nic
+# arg2 - wlan subnet id
+# arg3 - wlan gw ip address
+# arg4 - trusted subnet/ip address (for ssh connections)
 #
-function defineFwConstants_FW_RUI() {
+defineFwConstants_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -52,8 +63,8 @@ function defineFwConstants_FW_RUI() {
   # -rg - global readonly
   declare -rg WAN_NIC_RUI="$1"
   declare -rg WAN_ADDR_RUI="$2"
-  declare -rg WAN_GW_RUI="$3"
-  declare -rg TRUSTED_WAN_ADDR_RUI=$([ -z "$4"] && echo "192.168.0.0/24" || echo "$4")
+  declare -rg WAN_GW_RUI="${nd:3}"
+  declare -rg TRUSTED_WAN_ADDR_RUI=$([ -z "$4"] && echo "${WAN_ADDR_RUI}" || echo "$4")
 
   ipset create OUT_TCP_FW_PORTS bitmap:port range 1-4000
   ipset create OUT_UDP_FW_PORTS bitmap:port range 1-4000
@@ -73,28 +84,14 @@ function defineFwConstants_FW_RUI() {
   declare -rg SMTP_PORT_RUI="25"
   # Secured SMTP
   declare -rg SSMTP_PORT_RUI="465"
-  ipset add OUT_TCP_FW_PORTS "$SMTP_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$SMTP_PORT_RUI"
-  ipset add OUT_TCP_FW_PORTS "$SSMTP_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$SSMTP_PORT_RUI"
-
   # POP3
   declare -rg POP3_PORT_RUI="110"
-  ipset add OUT_TCP_FW_PORTS "$POP3_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$POP3_PORT_RUI"
   # Secured POP3
   declare -rg SPOP3_PORT_RUI="995"
-  ipset add OUT_TCP_FW_PORTS "$SPOP3_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$SPOP3_PORT_RUI"
   # IMAP
   declare -rg IMAP_PORT_RUI="143"
-  ipset add OUT_TCP_FW_PORTS "$IMAP_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$IMAP_PORT_RUI"
   # Secured IMAP
   declare -rg SIMAP_PORT_RUI="993"
-  ipset add OUT_TCP_FW_PORTS "$SIMAP_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$SIMAP_PORT_RUI"
-
   # ------- HTTP/S PORTS ------------
   declare -rg HTTP_PORT_RUI="80"
   ipset add OUT_TCP_FW_PORTS "$HTTP_PORT_RUI"
@@ -105,27 +102,15 @@ function defineFwConstants_FW_RUI() {
 
   # ------- Kerberous Port ----------
   declare -rg KERB_PORT_RUI="88"
-  ipset add OUT_TCP_FW_PORTS "$KERB_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$KERB_PORT_RUI"
-
   # ------- DHCP Ports:udp ----------
   declare -rg DHCP_SRV_PORT_RUI="67"
   declare -rg DHCP_CLIENT_PORT_RUI="68"
 
   # ------- DNS port:udp/tcp ------------
   declare -rg DNS_PORT_RUI="53"
-  # open dns
-  ipset add OUT_TCP_FW_PORTS "$DNS_PORT_RUI"
-  ipset add OUT_UDP_FW_PORTS "$DNS_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$DNS_PORT_RUI"
-  ipset add OUT_UDP_FWR_PORTS "$DNS_PORT_RUI"
 
   # ------- SNMP ports:udp/tcp ------------
   declare -rg SNMP_AGENT_PORT_RUI="161"
-  ipset add OUT_TCP_FW_PORTS "$SNMP_AGENT_PORT_RUI"
-  ipset add OUT_UDP_FW_PORTS "$SNMP_AGENT_PORT_RUI"
-  ipset add OUT_TCP_FWR_PORTS "$SNMP_AGENT_PORT_RUI"
-  ipset add OUT_UDP_FWR_PORTS "$SNMP_AGENT_PORT_RUI"
   declare -rg SNMP_MGMT_PORT_RUI="162"
 
   # ------- LDAP ports ----------------
@@ -138,17 +123,13 @@ function defineFwConstants_FW_RUI() {
 
   # ------- RDP ports ------------
   declare -rg RDP_PORT_RUI="3389"
-  ipset add OUT_TCP_FWR_PORTS "$RDP_PORT_RUI"
-  ipset add OUT_UDP_FWR_PORTS "$RDP_PORT_RUI"
 
   # ------- SSH ports ------------
   declare -rg SSH_PORT_RUI="22"
-  ipset add OUT_TCP_FW_PORTS "$SSH_PORT_RUI"
-
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-function clearFwState_FW_RUI() {
+clearFwState_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -172,7 +153,7 @@ function clearFwState_FW_RUI() {
 # arg0 - wan NIC
 # arg1 - lan NIC
 #
-function setCommonFwRules_FW_RUI() {
+setCommonFwRules_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -184,8 +165,6 @@ function setCommonFwRules_FW_RUI() {
   iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
   iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-  #    iptables -A INPUT -p tcp -m set --match-set IN_TCP_FW_PORTS dst -m state --state NEW -j ACCEPT
-
   # ------ Allow ICMP----------------------------------------------------- #
   iptables -A OUTPUT -p icmp --icmp-type echo-request -m state --state NEW -j ACCEPT
 
@@ -196,16 +175,18 @@ function setCommonFwRules_FW_RUI() {
 
   pingOfDeathProtection_FW_RUI
   portScanProtection_FW_RUI
-  #    syncFloodProtection
-
-  # enable incoming ssh
+  syncFloodProtection
 
   # We use the default policy [INPUT] [DROP]
   #    iptables -A INPUT -m state --state NEW -i "$WAN_NIC_RUI" -j DROP
 
-  # ----- MASQUERADE ------------------------------------------- #
-  iptables -t nat -A POSTROUTING -o "$WAN_NIC_RUI" -j MASQUERADE
-
+  # ----- MASQUERADE (for DHCP WAN)------------------------------------------- #
+  if [ ${WAN_GW_RUI}="nd" ]; then
+    iptables -t nat -A POSTROUTING -o "$WAN_NIC_RUI" -j MASQUERADE
+  else
+    # ----- Use SNAT: we don't receive WAN address via DHCP ------ #
+    iptables -t nat -A POSTROUTING -o "${WAN_NIC_RUI}" -j SNAT --to-source "${WAN_GW_RUI}"
+  fi
   # default policies for filter tables
   iptables -P INPUT DROP
   iptables -P FORWARD DROP
@@ -218,7 +199,7 @@ function setCommonFwRules_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-function portScanProtection_FW_RUI() {
+portScanProtection_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -235,8 +216,8 @@ function portScanProtection_FW_RUI() {
   iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j DROP
   iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP
   iptables -A INPUT -p tcp -j PORTSCAN
-  # TODO to know flag "-f"
-  #    iptables -A INPUT -f -j DROP
+  # packet with no dst/src address are dropped
+  iptables -A INPUT -f -j DROP
   iptables -A INPUT -p tcp ! --syn -m state --state NEW -j DROP
   iptables -A FORWARD -p tcp ! --syn -m state --state NEW -j DROP
 
@@ -245,7 +226,7 @@ function portScanProtection_FW_RUI() {
 
 }
 
-function pingOfDeathProtection_FW_RUI() {
+pingOfDeathProtection_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -258,17 +239,17 @@ function pingOfDeathProtection_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-function syncFloodProtection_FW_RUI() {
+syncFloodProtection_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   iptables -A INPUT -p tcp -sync -m tbf ! --tbf 1/s --tbf-deep 15 --tbf-mode srcip --tbf-name SYNC_FLOOD -j DROP
-  iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI"-sync -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
+  iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI" -sync -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-function saveFwState_FW_RUI() {
+saveFwState_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -299,9 +280,8 @@ function saveFwState_FW_RUI() {
 # arg2 - vlan gw
 # arg3 - tcp ipset out forward ports
 # arg4 - udp ipset out forward ports
-# arg7 - online/offline - there is /isn't WAN access
 #
-function addFwLAN_FW_RUI() {
+addFwLAN_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -314,19 +294,21 @@ function addFwLAN_FW_RUI() {
   # -- Start ICMP -------------------------------------------------------- #
   iptables -A FORWARD -p icmp --icmp-type echo-request -s "$lan_addr" -d "0/0" -m state --state NEW -j ACCEPT
   iptables -A INPUT -p icmp --icmp-type echo-request -s "$lan_addr" -d "$lan_gw" -m state --state NEW -j ACCEPT
+  # Allow connect to SSH
+  iptables -A INPUT -p tcp -s "$lan_addr" -d "$lan_gw" --dport "SSH_PORT_RUI" -m state --state NEW -j ACCEPT
+
   # --- End ICMP --------------------------------------------------------- #
 
   # We use the default policy [FORWARD] [DROP]
   #    iptables -A FORWARD -m state --state NEW -i "$WAN_NIC_RUI" -o "$lan_nic" -j DROP
 
   iptables -A FORWARD -i "$lan_nic" -o "$WAN_NIC_RUI" -s "$lan_addr" -p udp -m set --match-set "$out_udp_port_set" dst -m state --state NEW -j ACCEPT
-
   iptables -A FORWARD -i "$lan_nic" -o "$WAN_NIC_RUI" -s "$lan_addr" -p tcp -m set --match-set "$out_tcp_port_set" dst -m state --state NEW -j ACCEPT
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-function openFilterOutputPorts_FW_RUI() {
+openFilterOutputPorts_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -336,7 +318,7 @@ function openFilterOutputPorts_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-function portForwarding_FW_RUI() {
+portForwarding_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -345,7 +327,7 @@ function portForwarding_FW_RUI() {
   declare -r local dst_port=$([ -z "$3" ] && echo "$SSH_PORT_RUI" || echo "$3")
 
   iptables -A FORWARD -i "$WAN_NIC_RUI" -p tcp -d "$dst_ip" --dport "$dst_port" -j ACCEPT
-  iptables -t nat -I PREROUTING -p tcp -d "$WAN_GW_RUI" --dport "$src_port" -j DNAT --to "$dst_ip":"$dst_port"
+  iptables -t nat -I PREROUTING -p tcp -i "$WAN_NIC_RUI" --dport "$src_port" -j DNAT --to "$dst_ip":"$dst_port"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
