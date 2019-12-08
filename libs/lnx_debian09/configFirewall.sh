@@ -63,7 +63,7 @@ defineFwConstants_FW_RUI() {
   # -rg - global readonly
   declare -rg WAN_NIC_RUI="$1"
   declare -rg WAN_ADDR_RUI="$2"
-  declare -rg WAN_GW_RUI="${nd:3}"
+  declare -rg WAN_GW_RUI="${3:-'nd'}"
   declare -rg TRUSTED_WAN_ADDR_RUI=$([ -z "$4"] && echo "${WAN_ADDR_RUI}" || echo "$4")
 
   ipset create OUT_TCP_FW_PORTS bitmap:port range 1-4000
@@ -77,7 +77,11 @@ defineFwConstants_FW_RUI() {
 
   # FTP
   declare -rg FTP_DATA_PORT_RUI="20"
+  ipset add OUT_TCP_FW_PORTS "$FTP_DATA_PORT_RUI"
+  # ipset add OUT_TCP_FWR_PORTS "$FTP_DATA_PORT_RUI"
   declare -rg FTP_CMD_PORT_RUI="21"
+  ipset add OUT_TCP_FW_PORTS "$FTP_CMD_PORT_RUI"
+  # ipset add OUT_TCP_FWR_PORTS "$FTP_CMD_PORT_RUI"
 
   # ------- MAIL PORTS ------------
   # SMTP
@@ -146,6 +150,11 @@ clearFwState_FW_RUI() {
   ipset flush
   ipset destroy
 
+  # reset policy
+  iptables -P INPUT ACCEPT
+  iptables -P FORWARD ACCEPT
+  iptables -P OUTPUT ACCEPT
+
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
@@ -160,23 +169,46 @@ setCommonFwRules_FW_RUI() {
   # Always accept loopback traffic
   iptables -A INPUT -i lo -j ACCEPT
 
+  # Filter bad guys
+  iptables -N bad_tcp_packets
+  iptables -A INPUT -p tcp -j bad_tcp_packets
+  iptables -A FORWARD -p tcp -j bad_tcp_packets
+
+  #------ Port scan rules - DROP -----------------------------------------#
+  iptables -N PORTSCAN
+  iptables -A PORTSCAN -p tcp --tcp-flags ACK,FIN FIN -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags ACK,PSH PSH -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags ACK,URG URG -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags FIN,RST FIN,RST -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags SYN,FIN SYN,FIN -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags SYN,RST SYN,RST -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags ALL ALL -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags ALL NONE -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags ALL FIN,PSH,URG -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j DROP
+  iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP
+
+  iptables -A bad_tcp_packets -p tcp ! --syn -m state --state NEW -j DROP
+  iptables -A bad_tcp_packets -j PORTSCAN
+
+  pingOfDeathProtection_FW_RUI
+  syncFloodProtection_FW_RUI
+
   # All established/related connections are permitted
-  iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-  iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
-  iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+  iptables -N allowed_packets
+  iptables -A allowed_packets -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+  iptables -A INPUT -j allowed_packets
+  iptables -A FORWARD -j allowed_packets
+  iptables -A OUTPUT -j allowed_packets
+
+  # Vagrant gets connect from WAN subnet
+  iptables -A INPUT -s "$TRUSTED_WAN_ADDR_RUI" -p tcp --dport "$SSH_PORT_RUI" -m conntrack --ctstate NEW -j ACCEPT
 
   # ------ Allow ICMP----------------------------------------------------- #
   iptables -A OUTPUT -p icmp --icmp-type echo-request -m state --state NEW -j ACCEPT
 
-  iptables -A INPUT -i "$WAN_NIC_RUI" -s "$TRUSTED_WAN_ADDR_RUI" -p tcp --dport "$SSH_PORT_RUI" -m conntrack --ctstate NEW -j ACCEPT
-  #    iptables -A INPUT -s 10.0.2.0/24 -p tcp --dport "$SSH_PORT_RUI" -m conntrack --ctstate NEW -j ACCEPT
-
   openFilterOutputPorts_FW_RUI
-
-  pingOfDeathProtection_FW_RUI
-  portScanProtection_FW_RUI
-  syncFloodProtection
-
   # We use the default policy [INPUT] [DROP]
   #    iptables -A INPUT -m state --state NEW -i "$WAN_NIC_RUI" -j DROP
 
@@ -199,33 +231,6 @@ setCommonFwRules_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-portScanProtection_FW_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  iptables -N PORTSCAN
-  iptables -A PORTSCAN -p tcp --tcp-flags ACK,FIN FIN -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags ACK,PSH PSH -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags ACK,URG URG -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags FIN,RST FIN,RST -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags SYN,FIN SYN,FIN -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags SYN,RST SYN,RST -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags ALL ALL -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags ALL NONE -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags ALL FIN,PSH,URG -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j DROP
-  iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP
-  iptables -A INPUT -p tcp -j PORTSCAN
-  # packet with no dst/src address are dropped
-  iptables -A INPUT -f -j DROP
-  iptables -A INPUT -p tcp ! --syn -m state --state NEW -j DROP
-  iptables -A FORWARD -p tcp ! --syn -m state --state NEW -j DROP
-
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
-
-}
-
 pingOfDeathProtection_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
@@ -243,8 +248,17 @@ syncFloodProtection_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  iptables -A INPUT -p tcp -sync -m tbf ! --tbf 1/s --tbf-deep 15 --tbf-mode srcip --tbf-name SYNC_FLOOD -j DROP
-  iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI" -sync -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
+  # no extentions tbf available for Debian
+  iptables -A INPUT -p tcp --syn -m hashlimit --hashlimit 1/second \
+    --hashlimit-burst 15 --hashlimit-htable-expire 360000 \
+    --hashlimit-mode srcip --hashlimit-name SYNC_FLOOD -j ACCEPT
+
+  iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI" --syn -m hashlimit \
+    --hashlimit 2/hour --hashlimit-burst 7 --hashlimit-htable-expire 360000 \
+    --hashlimit-mode srcip --hashlimit-name SSH_FLOOD -j ACCEPT
+
+  # iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI" -sync -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
+  # iptables -A INPUT -p tcp -sync -m tbf ! --tbf 1/s --tbf-deep 15 --tbf-mode srcip --tbf-name SYNC_FLOOD -j DROP
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
@@ -295,15 +309,16 @@ addFwLAN_FW_RUI() {
   iptables -A FORWARD -p icmp --icmp-type echo-request -s "$lan_addr" -d "0/0" -m state --state NEW -j ACCEPT
   iptables -A INPUT -p icmp --icmp-type echo-request -s "$lan_addr" -d "$lan_gw" -m state --state NEW -j ACCEPT
   # Allow connect to SSH
-  iptables -A INPUT -p tcp -s "$lan_addr" -d "$lan_gw" --dport "SSH_PORT_RUI" -m state --state NEW -j ACCEPT
+  iptables -A INPUT -p tcp -s "$lan_addr" -d "$lan_gw" --dport "${SSH_PORT_RUI}" -m state --state NEW -j ACCEPT
+  # iptables -A INPUT -p tcp -s "$lan_addr" -d "$lan_gw" --dport "${SSH_PORT_RUI}" -m state --state NEW -j ACCEPT
 
   # --- End ICMP --------------------------------------------------------- #
 
   # We use the default policy [FORWARD] [DROP]
   #    iptables -A FORWARD -m state --state NEW -i "$WAN_NIC_RUI" -o "$lan_nic" -j DROP
 
-  iptables -A FORWARD -i "$lan_nic" -o "$WAN_NIC_RUI" -s "$lan_addr" -p udp -m set --match-set "$out_udp_port_set" dst -m state --state NEW -j ACCEPT
   iptables -A FORWARD -i "$lan_nic" -o "$WAN_NIC_RUI" -s "$lan_addr" -p tcp -m set --match-set "$out_tcp_port_set" dst -m state --state NEW -j ACCEPT
+  # iptables -A FORWARD -i "$lan_nic" -o "$WAN_NIC_RUI" -s "$lan_addr" -p udp -m set --match-set "$out_udp_port_set" dst -m state --state NEW -j ACCEPT
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
@@ -313,7 +328,7 @@ openFilterOutputPorts_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   iptables -A OUTPUT -p tcp -m set --match-set OUT_TCP_FW_PORTS dst -m state --state NEW -j ACCEPT
-  iptables -A OUTPUT -p udp -m set --match-set OUT_UDP_FW_PORTS dst -m state --state NEW -j ACCEPT
+  # iptables -A OUTPUT -p udp -m set --match-set OUT_UDP_FW_PORTS dst -m state --state NEW -j ACCEPT
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }

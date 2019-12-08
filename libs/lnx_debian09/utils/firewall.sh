@@ -4,8 +4,8 @@
 set -o nounset
 set -o errtrace
 
-ROOT_DIR_ROLL_UP_IT="/home/ftp_user/ftp/pub/rollUpIt.lnx"
-# ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
+# ROOT_DIR_ROLL_UP_IT="/home/ftp_user/ftp/pub/rollUpIt.lnx"
+ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh"
@@ -43,14 +43,14 @@ loop_FW_RUI() {
             ;;
           wan)
             printf "WAN ${#OPTARG} ${OPTIND}\n"
-            local int_name="${!OPTIND}"
-            printf "Arg: '--${OPTARG}' param: '${val}'\n"
+            local int_name="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "Arg: '--${OPTARG}' param: '${int_name}'\n"
             OPTIND=$(($OPTIND + 1))
-            local sn="${!OPTIND}"
-            printf "Arg: '--${OPTARG}' param: '${val}'\n"
+            local sn="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "Arg: '--${OPTARG}' param: '$sn'\n"
             OPTIND=$(($OPTIND + 1))
-            local gw_ip="${!OPTIND}"
-            printf "Arg: '--${OPTARG}' param: '${val}'\n"
+            local gw_ip="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "Arg: '--${OPTARG}' param: '${gw_ip}'\n"
 
             configFwRules_FW_RUI "${int_name}" "${sn}" "${gw_ip}" ""
             if_save_rules="true"
@@ -59,14 +59,14 @@ loop_FW_RUI() {
             ;;
           lan)
             printf "WAN ${#OPTARG} ${OPTIND}\n"
-            int_name="${!OPTIND}"
-            printf "Arg: '--${OPTARG}' param: '${val}'\n"
+            int_name="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "Arg: '--${OPTARG}' param: '${int_name}'\n"
             OPTIND=$(($OPTIND + 1))
-            sn="${!OPTIND}"
-            printf "Arg: '--${OPTARG}' param: '${val}'\n"
+            sn="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "Arg: '--${OPTARG}' param: '$sn'\n"
             OPTIND=$(($OPTIND + 1))
-            gw_ip="${!OPTIND}"
-            printf "Arg: '--${OPTARG}' param: '${val}'\n"
+            gw_ip="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "Arg: '--${OPTARG}' param: '${gw_ip}'\n"
 
             addFwLAN_FW_RUI "${int_name}" "${sn}" "${gw_ip}" "" ""
             if_save_rules="true"
@@ -99,6 +99,7 @@ loop_FW_RUI() {
   done
 
   if [ "${if_save_rules}"="true" ]; then
+    printf "${debug_prefix} Save the rules \n"
     saveFwState_FW_RUI
   fi
 
@@ -116,5 +117,10 @@ main() {
   return $?
 }
 
-main $@
-exit $?
+LOG_FP=$(getShLogName_COMMON_RUI $0)
+if [ ! -e "/var/log/post-scripts" ]; then
+  mkdir "/var/log/post-scripts"
+fi
+
+main $@ 2>&1 | tee "/var/log/post-scripts/${LOG_FP}"
+exit 0

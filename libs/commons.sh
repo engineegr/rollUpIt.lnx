@@ -531,3 +531,10 @@ getShLogName_COMMON_RUI() {
 
   echo -n "${log_fl}"
 }
+
+#
+# arg1 - expr (format: sn=...)
+#
+extractVal_COMMON_RUI() {
+  echo "$1" | sed -E 's/^([[:alpha:]]+=(.*))$/\2/'
+}
