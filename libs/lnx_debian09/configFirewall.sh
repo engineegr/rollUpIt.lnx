@@ -363,7 +363,7 @@ linkFwLAN_FW_RUI() {
   -p ALL -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
 
   let ++index_f
-  iptables -I FORWARD "${index_f}" -i "${lan001_iface}" -o "${lan002_iface}" \ 
+  iptables -I FORWARD "${index_f}" -i "${lan002_iface}" -o "${lan001_iface}" \ 
   -p ALL -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
