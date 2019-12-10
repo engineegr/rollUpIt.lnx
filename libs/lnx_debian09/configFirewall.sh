@@ -1,8 +1,8 @@
 #!/bin/bash
 
-############################################
-### Configuring Iptables Basic Rules #######
-############################################
+#################################################
+### Configuring Iptables: non-TRUSTED LAN #######
+#################################################
 
 set -o errexit
 # To be failed when it tries to use undeclare variables
@@ -12,8 +12,9 @@ help_FW_RUI() {
   echo "Usage:" >&2
   echo "-h - print help" >&2
   echo "--install - install <iptables-persistent> and <ip-set>" >&2
-  echo "--wan - WAN (format: --wan int=... sn=... addr=... --lan int=... sn=... addr=...)" >&2
-  echo "--lan - LAN (format: --wan int=... sn=... addr=... --lan int=... sn=... addr=...)" >&2
+  echo "--wan - WAN (format: --wan int=... sn=... addr=... [--lan int=... sn=... addr=... [index_i=... index_f=... index_o=...]])" >&2
+  echo "--lan - LAN (format: --lan int=... sn=... addr=... index_i=... index_f=... index_o=...)" >&2
+  echo "--link lan001_iface=... lan002_iface=..."
   echo "--reset - reset rules" >&2
   echo "--lf - list filter rules" >&2
   echo "--ln - list nat rules" >&2
@@ -29,42 +30,11 @@ installFw_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-configFwRules_FW_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  if [[ -z "$1" || -z "$2" || -z "$3" ]]; then
-    printf "$debug_prefix ${red_rollup_it} error: empty parameters ${end_rollup_it}"
-    exit 1
-  fi
-
-  clearFwState_FW_RUI
-  defineFwConstants_FW_RUI "$1" "$2" "$3" "$4"
-  setCommonFwRules_FW_RUI
-
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
-}
-
-#
-# arg1 - wlan nic
-# arg2 - wlan subnet id
-# arg3 - wlan gw ip address
-# arg4 - trusted subnet/ip address (for ssh connections)
-#
 defineFwConstants_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  if [[ -z "$1" || -z "$2" || -z "$3" ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Empty parameters ${END_ROLLUP_IT}"
-    exit 1
-  fi
-
   # -rg - global readonly
-  declare -rg WAN_IFACE_RUI="$1"
-  declare -rg WAN_SN_RUI="$2"
-  declare -rg WAN_IP_RUI="${3:-'nd'}"
-  declare -rg TRUSTED_WAN_SN_RUI=$([ -z "$4"] && echo "${WAN_SN_RUI}" || echo "$4")
   declare -rg LO_IFACE="lo"
   declare -rg LO_IP="127.0.0.1"
 
@@ -162,11 +132,22 @@ clearFwState_FW_RUI() {
 
 #
 # arg0 - wan NIC
-# arg1 - lan NIC
+# arg1 - wan subnet
+# arg2 - wan ip
 #
-setCommonFwRules_FW_RUI() {
+beginFwRules_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  if [[ -z "$1" || -z "$2" || -z "$3" ]]; then
+    printf "$debug_prefix ${RED_ROLLUP_IT} Error: Empty parameters ${END_ROLLUP_IT}"
+    exit 1
+  fi
+
+  local -r WAN_IFACE_RUI="$1"
+  local -r WAN_SN_RUI="$2"
+  local -r WAN_IP_RUI="${3:-'nd'}"
+  local -r TRUSTED_WAN_SN_RUI=$([ -z "$4"] && echo "${WAN_SN_RUI}" || echo "$4")
 
   # Always accept loopback traffic
   iptables -A INPUT -i "{LO_IFACE}" -j ACCEPT
@@ -193,12 +174,12 @@ setCommonFwRules_FW_RUI() {
   iptables -A bad_tcp_packets -p tcp --tcp-flags SYN,ACK ACK,SYN -m state --state NEW -j LOG --log-prefix "CHAIN [bad_tcp_packets] MATCH [SYN,ACK New]"
   iptables -A bad_tcp_packets -p tcp --tcp-flags SYN,ACK ACK,SYN -m state --state NEW -j REJECT --reject-with --tcp-reset
 
-  iptables -A bad_tcp_packets -p tcp ! --syn -m state --state NEW -j LOG --log-prefix "CHAIN [bad_tcp_packets] MATCH [NOT Syn New]"
+  iptables -A bad_tcp_packets -p tcp ! --syn -m state --state NEW -j LOG --log-prefix "CHAIN [bad_tcp_packets] MATCH [not SYN new]"
   iptables -A bad_tcp_packets -p tcp ! --syn -m state --state NEW -j DROP
   iptables -A bad_tcp_packets -j PORTSCAN
 
   pingOfDeathProtection_FW_RUI
-  syncFloodProtection_FW_RUI
+  synFloodProtection_FW_RUI
 
   # All established/related connections are permitted
   iptables -N allowed_packets
@@ -209,16 +190,10 @@ setCommonFwRules_FW_RUI() {
   iptables -A OUTPUT -p ALL -s "${LO_IP_RUI}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
   iptables -A OUTPUT -p ALL -o "${WAN_IFACE_RUI}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
 
-  # OUTPUT: LOG unmatched dropping packets:
-  iptables -A OUTPUT -m limit --limit 3/minute --limit-burst 3 -j LOG --log-level DEBUG --log-prefix "CHAIN [OUTPUT] MATCH [died packets]"
-
   # all open tcp ports
-  iptables -A INPUT -s "${TRUSTED_WAN_SN_RUI}" -p tcp --dport "${SSH_PORT_RUI}" -m set --match-set "${IN_TCP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
-  iptables -A INPUT -s "${TRUSTED_WAN_SN_RUI}" -p udp --dport "${SSH_PORT_RUI}" -m set --match-set "${IN_UDP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
+  iptables -A INPUT -s "${TRUSTED_WAN_SN_RUI}" -p tcp -m set --match-set "${IN_TCP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
+  iptables -A INPUT -s "${TRUSTED_WAN_SN_RUI}" -p udp -m set --match-set "${IN_UDP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
   iptables -A INPUT -i "${LO_IFACE}" -p ALL -s "${LO_IP}" -j ACCEPT
-
-  # INPUT: LOG unmatched dropping packets:
-  iptables -A INPUT -m limit --limit 3/minute --limit-burst 3 -j LOG --log-level DEBUG --log-prefix "CHAIN [INPUT] MATCH [died packets]"
 
   # ----- MASQUERADE (for DHCP WAN)------------------------------------------- #
   if [ ${WAN_IP_RUI}="nd" ]; then
@@ -233,7 +208,7 @@ setCommonFwRules_FW_RUI() {
   iptables -P OUTPUT DROP
 
   # Enable routing.
-  echo 1 >/proc/sys/net/ipv4/ip_forward
+  echo "1" >"/proc/sys/net/ipv4/ip_forward"
 
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
@@ -245,18 +220,20 @@ pingOfDeathProtection_FW_RUI() {
 
   # protects from PING of death
   iptables -N PING_OF_DEATH
-  iptables -A PING_OF_DEATH -p icmp --icmp-type echo-request -m hashlimit --hashlimit 1/s --hashlimit-burst 10 --hashlimit-htable-expire 300000 --hashlimit-mode srcip --hashlimit-name t_PING_OF_DEATH -j RETURN
+  iptables -A PING_OF_DEATH -p icmp --icmp-type echo-request -m hashlimit --hashlimit 1/s \
+    --hashlimit-burst 10 --hashlimit-htable-expire 300000 \
+    --hashlimit-mode srcip --hashlimit-name t_PING_OF_DEATH -j RETURN
+
   iptables -A PING_OF_DEATH -j DROP
   iptables -A INPUT -p icmp --icmp-type echo-request -j PING_OF_DEATH
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-syncFloodProtection_FW_RUI() {
+synFloodProtection_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  # no extentions tbf available for Debian
   iptables -A INPUT -p tcp --syn -m hashlimit --hashlimit 1/second \
     --hashlimit-burst 15 --hashlimit-htable-expire 360000 \
     --hashlimit-mode srcip --hashlimit-name SYNC_FLOOD -j ACCEPT
@@ -265,8 +242,9 @@ syncFloodProtection_FW_RUI() {
     --hashlimit 2/hour --hashlimit-burst 7 --hashlimit-htable-expire 360000 \
     --hashlimit-mode srcip --hashlimit-name SSH_FLOOD -j ACCEPT
 
-  # iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI" -sync -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
-  # iptables -A INPUT -p tcp -sync -m tbf ! --tbf 1/s --tbf-deep 15 --tbf-mode srcip --tbf-name SYNC_FLOOD -j DROP
+  # no extentions tbf available for Debian
+  # iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI" --syn -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
+  # iptables -A INPUT -p tcp --syn -m tbf ! --tbf 1/s --tbf-deep 15 --tbf-mode srcip --tbf-name SYNC_FLOOD -j DROP
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
@@ -302,30 +280,98 @@ saveFwState_FW_RUI() {
 # arg2 - vlan gw
 # arg3 - tcp ipset out forward ports
 # arg4 - udp ipset out forward ports
+# arg5 - index_i (INPUT start index)
+# arg6 - index_f (FORWARD -/-)
+# arg7 - index_o (OUTPUT -/-)
 #
-addFwLAN_FW_RUI() {
+insertFwLAN_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   local -r lan_iface="$1"
-  local -r klan_sn="$2"
+  local -r lan_sn="$2"
   local -r lan_ip=$([ -z "$3" ] && echo "10.10.0.1" || echo "$3")
   local -r out_tcp_port_set=$([ -z "$4" ] && echo "OUT_TCP_FWR_PORTS" || echo "$4")
   local -r out_udp_port_set=$([ -z "$5" ] && echo "OUT_UDP_FWR_PORTS" || echo "$5")
+  local -r index_i=$5 # insert index INPUT
+  local -r index_f=$6 # FORWARD
+  local -r index_o=$7 # OUTPUT
 
   # -- Start ICMP -------------------------------------------------------- #
-  iptables -A FORWARD -p icmp --icmp-type echo-request -s "${lan_sn}" -d "0/0" -m state --state NEW -j ACCEPT
-  iptables -A INPUT -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
-  # --- End ICMP --------------------------------------------------------- #
+  if [ "${index_f}"="nd" ]; then
+    iptables -A FORWARD -p icmp --icmp-type echo-request -s "${lan_sn}" -d "0/0" -m state --state NEW -j ACCEPT
+  else
+    iptables -I FORWARD "${index_f}" -p icmp --icmp-type echo-request -s "${lan_sn}" -d "0/0" -m state --state NEW -j ACCEPT
+  fi
 
-  # Allow connect to SSH from LAN
-  iptables -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
-  iptables -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_RUI}" -m state --state NEW -j ACCEPT
+  if [ "${index_i}"="nd" ]; then
+    iptables -A INPUT -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
+    # Allow connect to SSH from LAN
+    iptables -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
+    iptables -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_RUI}" -m state --state NEW -j ACCEPT
+  else
+    iptables -I INPUT "${index_i}" -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
+    let ++index_i
+    # Allow connect to SSH from LAN
+    iptables -I INPUT "${index_i}" -p tcp -s "${lan_sn}" -d "${lan_ip}" \
+      --dport "${SSH_PORT_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
+    let ++index_i
+    iptables -I INPUT "${index_i}" -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_RUI}" -m state --state NEW -j ACCEPT
+  fi
 
-  iptables -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
-  iptables -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
+  if [ "${index_f}"="nd" ]; then
+    iptables -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
+    iptables -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
+  else
+    let ++index_f
+    iptables -I FORWARD "${index_f}" -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" \ 
+    -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
 
-  iptables -A OUTPUT -p ALL -s "${lan_sn}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
+    let ++index_f
+    iptables -I FORWARD "${index_f}" -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" \
+      -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
+  fi
+
+  if [ "${index_o}"="nd" ]; then
+    iptables -A OUTPUT -p ALL -s "${lan_sn}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
+  else
+    iptables -I OUTPUT "${index_o}" -p ALL -s "${lan_sn}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
+  fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
+}
+
+#
+# arg0 - lan001_iface
+# arg1 - lan002_iface
+# arg3 - index_f
+#
+linkFwLAN_FW_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  if [ $# -ne 3 ]; then
+    printf "${debug_prefix} ${RED_ROLLUP_IT} Error: count of arguments less than 3 ${END_ROLLUP_IT}"
+    exit 1
+  fi
+
+  local -r lan001_iface="$1"
+  local -r lan002_iface="$2"
+  local -r index_f="$3"
+
+  iptables -I FORWARD "${index_f}" -i "${lan001_iface}" -o "${lan002_iface}" \ 
+  -p ALL -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
+
+  let ++index_f
+  iptables -I FORWARD "${index_f}" -i "${lan001_iface}" -o "${lan002_iface}" \ 
+  -p ALL -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
+}
+
+endFwRules_FW_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   # INPUT: LOG unmatched dropping packets:
   iptables -A INPUT -m limit --limit 3/minute --limit-burst 3 -j LOG --log-level DEBUG --log-prefix "CHAIN [INPUT] MATCH [died packets]"
@@ -341,12 +387,12 @@ portForwarding_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  local -r src_port=$([ -z "$1" ] && echo "2222" || echo "$1")
-  local -r dst_ip=$([ -z "$2" ] && echo "10.10.0.21" || echo "$2")
-  local -r dst_port=$([ -z "$3" ] && echo "$SSH_PORT_RUI" || echo "$3")
+  local -r dest_port=$([ -z "$1" ] && echo "2222" || echo "$1")
+  local -r fwd_ip=$([ -z "$2" ] && echo "10.10.0.21" || echo "$2")
+  local -r fwd_port=$([ -z "$3" ] && echo "$SSH_PORT_RUI" || echo "$3")
 
-  iptables -A FORWARD -i "${WAN_IFACE_RUI}" -p tcp -d "${dst_ip}" --dport "${dst_port}" -j ACCEPT
-  iptables -t nat -I PREROUTING -p tcp -i "${WAN_IFACE_RUI}" --dport "${src_port}" -j DNAT --to "${dst_ip}":"${dst_port}"
+  iptables -A FORWARD -i "${WAN_IFACE_RUI}" -p tcp -d "${fwd_ip}" --dport "${fwd_port}" -j ACCEPT
+  iptables -t nat -I PREROUTING -p tcp -i "${WAN_IFACE_RUI}" --dport "${dest_port}" -j DNAT --to "${fwd_ip}":"${fwd_port}"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
