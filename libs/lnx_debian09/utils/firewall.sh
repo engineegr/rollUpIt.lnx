@@ -36,14 +36,7 @@ loop_FW_RUI() {
   local __opts=""
   local if_save_rules="false"
   local if_begin="false"
-  local IF_DEBUG="true"
-
-  if [[ "${IF_DEBUG}" == "false" ]]; then
-    printf "${debug_prefix} ${GRN_ROLLUP_IT} UnSet DEBUG mode ${END_ROLLUP_IT} \n"
-    defineFwConstants_FW_RUI
-  else
-    printf "${debug_prefix} ${GRN_ROLLUP_IT} Set DEBUG mode ${END_ROLLUP_IT} \n"
-  fi
+  local IF_DEBUG_FW_RUI="false"
 
   while getopts ":h-:" opt; do
     case $opt in
@@ -51,7 +44,7 @@ loop_FW_RUI() {
         case "${OPTARG}" in
           install)
             printf "${debug_prefix} ${GRN_ROLLUP_IT} Install fw ${#OPTARG} ${OPTIND} ${END_ROLLUP_IT} \n"
-            if [ "${IF_DEBUG}"="false" ]; then
+            if [ "${IF_DEBUG_FW_RUI}"="false" ]; then
               installFw_FW_RUI
             fi
             ;;
@@ -68,9 +61,10 @@ loop_FW_RUI() {
             local gw_ip="$(extractVal_COMMON_RUI "${!OPTIND}")"
             printf "${debug_prefix} ${GRN_ROLLUP_IT} WAN GW ip: '--${OPTARG}' param: '${gw_ip}' ${END_ROLLUP_IT} \n"
 
-            if [[ "${IF_DEBUG}" == "false" ]]; then
+            if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
               clearFwState_FW_RUI
               loadFwModules_FW_RUI
+              defineFwConstants_FW_RUI
               beginFwRules_FW_RUI "${int_name}" "${sn}" "${gw_ip}" ""
             fi
 
@@ -109,7 +103,7 @@ loop_FW_RUI() {
               printf "${debug_prefix} ${GRN_ROLLUP_IT} Index OUTPUT: ${index_o} ${END_ROLLUP_IT}\n"
             fi
 
-            if [[ "${IF_DEBUG}" == "false" ]]; then
+            if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
               #
               # arg0 - vlan nic
               # arg1 - vlan ip
@@ -149,7 +143,7 @@ loop_FW_RUI() {
             printf "${debug_prefix} ${GRN_ROLLUP_IT} Debug: Index FORWARD [ ${index_f} ] ${END_ROLLUP_IT}\n"
             OPTIND=$(($OPTIND + 1))
 
-            if [[ "${IF_DEBUG}" == "false" ]]; then
+            if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
               linkFwLAN_FW_RUI "${lan001_iface}" "${lan002_iface}" "${index_f}"
             fi
             ;;
@@ -159,7 +153,7 @@ loop_FW_RUI() {
             printf "${debug_prefix} ${GRN_ROLLUP_IT} Arg: '--${OPTARG}' ${END_ROLLUP_IT}\n"
 
             if_save_rules="true"
-            if [[ "${IF_DEBUG}" == "false" ]]; then
+            if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
               clearFwState_FW_RUI
             fi
             ;;
@@ -182,7 +176,7 @@ loop_FW_RUI() {
     esac
   done
 
-  if [[ "${IF_DEBUG}" == "false" ]]; then
+  if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
     if [[ "${if_begin}" == "true" ]]; then
       endFwRules_FW_RUI
     fi
