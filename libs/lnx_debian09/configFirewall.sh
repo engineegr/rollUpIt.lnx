@@ -67,22 +67,9 @@ defineFwConstants_FW_RUI() {
   # -rg - global readonly
   declare -rg LO_IFACE_FW_RUI="lo"
   declare -rg LO_IP_FW_RUI="127.0.0.1"
-
-  ipset create IN_UDP_FW_PORTS bitmap:port range 1-4000
-  ipset create IN_TCP_FW_PORTS bitmap:port range 1-4000
-  ipset create OUT_TCP_FWR_PORTS bitmap:port range 1-4000
-  ipset create OUT_UDP_FWR_PORTS bitmap:port range 1-4000
-  ipset create IN_TCP_FWR_PORTS bitmap:port range 1-4000
-  ipset create IN_UDP_FWR_PORTS bitmap:port range 1-4000
-
   # FTP
   declare -rg FTP_DATA_PORT_FW_RUI="20"
-  # ipset add OUT_TCP_FW_PORTS "${FTP_DATA_PORT_FW_RUI}"
-  ipset add OUT_TCP_FWR_PORTS "$FTP_DATA_PORT_FW_RUI"
   declare -rg FTP_CMD_PORT_FW_RUI="21"
-  # ipset add OUT_TCP_FW_PORTS "${FTP_CMD_PORT_FW_RUI}"
-  ipset add OUT_TCP_FWR_PORTS "$FTP_CMD_PORT_FW_RUI"
-
   # ------- MAIL PORTS ------------
   # SMTP
   declare -rg SMTP_PORT_FW_RUI="25"
@@ -98,11 +85,7 @@ defineFwConstants_FW_RUI() {
   declare -rg SIMAP_PORT_FW_RUI="993"
   # ------- HTTP/S PORTS ------------
   declare -rg HTTP_PORT_FW_RUI="80"
-  # ipset add OUT_TCP_FW_PORTS "${HTTP_PORT_FW_RUI}"
-  ipset add OUT_TCP_FWR_PORTS "${HTTP_PORT_FW_RUI}"
   declare -rg HTTPS_PORT_FW_RUI="443"
-  # ipset add OUT_TCP_FW_PORTS "${HTTPS_PORT_FW_RUI}"
-  ipset add OUT_TCP_FWR_PORTS "${HTTPS_PORT_FW_RUI}"
 
   # ------- Kerberous Port ----------
   declare -rg KERB_PORT_FW_RUI="88"
@@ -130,7 +113,32 @@ defineFwConstants_FW_RUI() {
 
   # ------- SSH ports ------------
   declare -rg SSH_PORT_FW_RUI="22"
-  ipset add IN_TCP_FW_PORTS "${SSH_PORT_FW_RUI}"
+
+  if [ -z "$(ipset list -n | grep "IN_UDP_FW_PORTS")" ] && [ -z "$(ipset list -n | grep "IN_TCP_FW_PORTS")" ] &&
+    [ -z "$(ipset list -n | grep "OUT_TCP_FWR_PORTS")" ] && [ -z "$(ipset list -n | grep "OUT_UDP_FWR_PORTS")" ] &&
+    [ -z "$(ipset list -n | grep "IN_TCP_FWR_PORTS")" ] && [ -z "$(ipset list -n | grep "IN_UDP_FWR_PORTS")" ]; then
+
+    ipset create IN_UDP_FW_PORTS bitmap:port range 1-4000
+    ipset create IN_TCP_FW_PORTS bitmap:port range 1-4000
+    ipset create OUT_TCP_FWR_PORTS bitmap:port range 1-4000
+    ipset create OUT_UDP_FWR_PORTS bitmap:port range 1-4000
+    ipset create IN_TCP_FWR_PORTS bitmap:port range 1-4000
+    ipset create IN_UDP_FWR_PORTS bitmap:port range 1-4000
+
+    #--- Add ports --------------------------------------#
+    # ipset add OUT_TCP_FW_PORTS "${FTP_DATA_PORT_FW_RUI}"
+    ipset add OUT_TCP_FWR_PORTS "$FTP_DATA_PORT_FW_RUI"
+    # ipset add OUT_TCP_FW_PORTS "${FTP_CMD_PORT_FW_RUI}"
+    ipset add OUT_TCP_FWR_PORTS "$FTP_CMD_PORT_FW_RUI"
+    # ipset add OUT_TCP_FW_PORTS "${HTTP_PORT_FW_RUI}"
+    ipset add OUT_TCP_FWR_PORTS "${HTTP_PORT_FW_RUI}"
+
+    ipset add IN_TCP_FW_PORTS "${SSH_PORT_FW_RUI}"
+    # ipset add OUT_TCP_FW_PORTS "${HTTPS_PORT_FW_RUI}"
+    ipset add OUT_TCP_FWR_PORTS "${HTTPS_PORT_FW_RUI}"
+  else
+    printf "${debug_prefix} ${GRN_ROLLUP_IT} ipset vars have already defined. Please, check [ ipset list -n ] ${END_ROLLUP_IT} \n"
+  fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
@@ -177,7 +185,7 @@ beginFwRules_FW_RUI() {
   local -r WAN_IFACE_FW_RUI="$1"
   local -r WAN_SN_FW_RUI="$2"
   local -r WAN_IP_FW_RUI="${3:-'nd'}"
-  local -r TRUSTED_WAN_FW_RUI=$([ -z "$4"] && echo "${WAN_SN_RUI}" || echo "$4")
+  local -r TRUSTED_WAN_FW_RUI=$([ -z "$4"] && echo "${WAN_SN_FW_RUI}" || echo "$4")
 
   # Always accept loopback traffic
   iptables -A INPUT -i "{LO_IFACE}" -j ACCEPT
@@ -213,17 +221,19 @@ beginFwRules_FW_RUI() {
 
   # All established/related connections are permitted
   iptables -N allowed_packets
-  iptables -A allowed_packets -m state --state ESTABLISHED,RELATED -j ACCEPT
+  iptables -v -A allowed_packets -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-  iptables -A INPUT -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
-  iptables -A FORWARD -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
-  iptables -A OUTPUT -p ALL -s "${LO_IP_FW_RUI}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
-  iptables -A OUTPUT -p ALL -o "${WAN_IFACE_FW_RUI}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
+  iptables -v -A INPUT -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
+  iptables -v -A FORWARD -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Loopback to OUTPUT Begin ${END_ROLLUP_IT} \n"
+  iptables -v -A OUTPUT -p ALL --src "${LO_IP_FW_RUI}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Loopback to OUTPUT End ${END_ROLLUP_IT} \n"
+  iptables -v -A OUTPUT -p ALL -o "${WAN_IFACE_FW_RUI}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
 
   # all open tcp ports
-  iptables -A INPUT -s "${TRUSTED_WAN_FW_RUI}" -p tcp -m set --match-set "${IN_TCP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
-  iptables -A INPUT -s "${TRUSTED_WAN_FW_RUI}" -p udp -m set --match-set "${IN_UDP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
-  iptables -A INPUT -i "${LO_IFACE}" -p ALL -s "${LO_IP}" -j ACCEPT
+  iptables -v -A INPUT -s "${TRUSTED_WAN_FW_RUI}" -p tcp -m set --match-set "${IN_TCP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
+  iptables -v -A INPUT -s "${TRUSTED_WAN_FW_RUI}" -p udp -m set --match-set "${IN_UDP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
+  iptables -v -A INPUT -i "${LO_IFACE}" -p ALL -s "${LO_IP}" -j ACCEPT
 
   # ----- MASQUERADE (for DHCP WAN)------------------------------------------- #
   if [[ "${WAN_IP_FW_RUI}" == "nd" ]]; then
@@ -266,7 +276,7 @@ synFloodProtection_FW_RUI() {
 
   iptables -A INPUT -p tcp --syn -m hashlimit --hashlimit 1/second \
     --hashlimit-burst 15 --hashlimit-htable-expire 360000 \
-    --hashlimit-mode srcip --hashlimit-name SYNC_FLOOD -j ACCEPT
+    --hashlimit-mode srcip --hashlimit-name SYN_FLOOD -j ACCEPT
 
   iptables -A INPUT -p tcp --dport "$SSH_PORT_FW_RUI" --syn -m hashlimit \
     --hashlimit 2/hour --hashlimit-burst 7 --hashlimit-htable-expire 360000 \
@@ -363,9 +373,9 @@ insertFwLAN_FW_RUI() {
   fi
 
   if [[ "${index_o}" == "nd" ]]; then
-    iptables -A OUTPUT -p ALL -s "${lan_sn}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
+    iptables -A OUTPUT -p ALL -s "${lan_sn}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
   else
-    iptables -I OUTPUT "${index_o}" -p ALL -s "${lan_sn}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
+    iptables -I OUTPUT "${index_o}" -p ALL -s "${lan_sn}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
   fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
