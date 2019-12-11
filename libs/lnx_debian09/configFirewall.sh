@@ -30,13 +30,43 @@ installFw_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
+loadFwModules_FW_RUI() {
+  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  /sbin/depmod -a
+
+  /sbin/modprobe ip_tables
+  /sbin/modprobe ip_conntrack
+  /sbin/modprobe iptable_filter
+  /sbin/modprobe iptable_mangle
+  /sbin/modprobe iptable_nat
+  /sbin/modprobe ipt_LOG
+  /sbin/modprobe ipt_limit
+  /sbin/modprobe ipt_state
+  /sbin/modprobe ip_nat_ftp
+  /sbin/modprobe ipt_REJECT
+  /sbin/modprobe ipt_MASQUERADE
+
+  #
+  # 2.2 Non-Required modules
+  #
+
+  #/sbin/modprobe ipt_owner
+  #/sbin/modprobe ip_conntrack_ftp
+  #/sbin/modprobe ip_conntrack_irc
+  #/sbin/modprobe ip_nat_irc
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
+}
+
 defineFwConstants_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   # -rg - global readonly
-  declare -rg LO_IFACE="lo"
-  declare -rg LO_IP="127.0.0.1"
+  declare -rg LO_IFACE_FW_RUI="lo"
+  declare -rg LO_IP_FW_RUI="127.0.0.1"
 
   ipset create IN_UDP_FW_PORTS bitmap:port range 1-4000
   ipset create IN_TCP_FW_PORTS bitmap:port range 1-4000
@@ -46,61 +76,61 @@ defineFwConstants_FW_RUI() {
   ipset create IN_UDP_FWR_PORTS bitmap:port range 1-4000
 
   # FTP
-  declare -rg FTP_DATA_PORT_RUI="20"
-  ipset add OUT_TCP_FW_PORTS "${FTP_DATA_PORT_RUI}"
-  # ipset add OUT_TCP_FWR_PORTS "$FTP_DATA_PORT_RUI"
-  declare -rg FTP_CMD_PORT_RUI="21"
-  ipset add OUT_TCP_FW_PORTS "${FTP_CMD_PORT_RUI}"
-  # ipset add OUT_TCP_FWR_PORTS "$FTP_CMD_PORT_RUI"
+  declare -rg FTP_DATA_PORT_FW_RUI="20"
+  # ipset add OUT_TCP_FW_PORTS "${FTP_DATA_PORT_FW_RUI}"
+  ipset add OUT_TCP_FWR_PORTS "$FTP_DATA_PORT_FW_RUI"
+  declare -rg FTP_CMD_PORT_FW_RUI="21"
+  # ipset add OUT_TCP_FW_PORTS "${FTP_CMD_PORT_FW_RUI}"
+  ipset add OUT_TCP_FWR_PORTS "$FTP_CMD_PORT_FW_RUI"
 
   # ------- MAIL PORTS ------------
   # SMTP
-  declare -rg SMTP_PORT_RUI="25"
+  declare -rg SMTP_PORT_FW_RUI="25"
   # Secured SMTP
-  declare -rg SSMTP_PORT_RUI="465"
+  declare -rg SSMTP_PORT_FW_RUI="465"
   # POP3
-  declare -rg POP3_PORT_RUI="110"
+  declare -rg POP3_PORT_FW_RUI="110"
   # Secured POP3
-  declare -rg SPOP3_PORT_RUI="995"
+  declare -rg SPOP3_PORT_FW_RUI="995"
   # IMAP
-  declare -rg IMAP_PORT_RUI="143"
+  declare -rg IMAP_PORT_FW_RUI="143"
   # Secured IMAP
-  declare -rg SIMAP_PORT_RUI="993"
+  declare -rg SIMAP_PORT_FW_RUI="993"
   # ------- HTTP/S PORTS ------------
-  declare -rg HTTP_PORT_RUI="80"
-  ipset add OUT_TCP_FW_PORTS "${HTTP_PORT_RUI}"
-  ipset add OUT_TCP_FWR_PORTS "${HTTP_PORT_RUI}"
-  declare -rg HTTPS_PORT_RUI="443"
-  ipset add OUT_TCP_FW_PORTS "${HTTPS_PORT_RUI}"
-  ipset add OUT_TCP_FWR_PORTS "${HTTPS_PORT_RUI}"
+  declare -rg HTTP_PORT_FW_RUI="80"
+  # ipset add OUT_TCP_FW_PORTS "${HTTP_PORT_FW_RUI}"
+  ipset add OUT_TCP_FWR_PORTS "${HTTP_PORT_FW_RUI}"
+  declare -rg HTTPS_PORT_FW_RUI="443"
+  # ipset add OUT_TCP_FW_PORTS "${HTTPS_PORT_FW_RUI}"
+  ipset add OUT_TCP_FWR_PORTS "${HTTPS_PORT_FW_RUI}"
 
   # ------- Kerberous Port ----------
-  declare -rg KERB_PORT_RUI="88"
+  declare -rg KERB_PORT_FW_RUI="88"
   # ------- DHCP Ports:udp ----------
-  declare -rg DHCP_SRV_PORT_RUI="67"
-  declare -rg DHCP_CLIENT_PORT_RUI="68"
+  declare -rg DHCP_SRV_PORT_FW_RUI="67"
+  declare -rg DHCP_CLIENT_PORT_FW_RUI="68"
 
   # ------- DNS port:udp/tcp ------------
-  declare -rg DNS_PORT_RUI="53"
+  declare -rg DNS_PORT_FW_RUI="53"
 
   # ------- SNMP ports:udp/tcp ------------
-  declare -rg SNMP_AGENT_PORT_RUI="161"
-  declare -rg SNMP_MGMT_PORT_RUI="162"
+  declare -rg SNMP_AGENT_PORT_FW_RUI="161"
+  declare -rg SNMP_MGMT_PORT_FW_RUI="162"
 
   # ------- LDAP ports ----------------
-  declare -rg LDAP_PORT_RUI="389"
-  declare -rg SLDAP_PORT_RUI="636"
+  declare -rg LDAP_PORT_FW_RUI="389"
+  declare -rg SLDAP_PORT_FW_RUI="636"
 
   # ------- OpenVPN ports ------------
-  declare -rg UOVPN_PORT_RUI="1194" # udp
-  declare -rg TOVPN_PORT_RUI="443"  # tcp
+  declare -rg UOVPN_PORT_FW_RUI="1194" # udp
+  declare -rg TOVPN_PORT_FW_RUI="443"  # tcp
 
   # ------- RDP ports ------------
-  declare -rg RDP_PORT_RUI="3389"
+  declare -rg RDP_PORT_FW_RUI="3389"
 
   # ------- SSH ports ------------
-  declare -rg SSH_PORT_RUI="22"
-  ipset add IN_TCP_FW_PORTS "${SSH_PORT_RUI}"
+  declare -rg SSH_PORT_FW_RUI="22"
+  ipset add IN_TCP_FW_PORTS "${SSH_PORT_FW_RUI}"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
@@ -144,18 +174,18 @@ beginFwRules_FW_RUI() {
     exit 1
   fi
 
-  local -r WAN_IFACE_RUI="$1"
-  local -r WAN_SN_RUI="$2"
-  local -r WAN_IP_RUI="${3:-'nd'}"
-  local -r TRUSTED_WAN_SN_RUI=$([ -z "$4"] && echo "${WAN_SN_RUI}" || echo "$4")
+  local -r WAN_IFACE_FW_RUI="$1"
+  local -r WAN_SN_FW_RUI="$2"
+  local -r WAN_IP_FW_RUI="${3:-'nd'}"
+  local -r TRUSTED_WAN_FW_RUI=$([ -z "$4"] && echo "${WAN_SN_RUI}" || echo "$4")
 
   # Always accept loopback traffic
   iptables -A INPUT -i "{LO_IFACE}" -j ACCEPT
 
   # Filter income bad guys
   iptables -N bad_tcp_packets
-  iptables -A INPUT -i "${WAN_IFACE_RUI}" -p tcp -j bad_tcp_packets
-  iptables -A FORWARD -i "${WAN_IFACE_RUI}" -p tcp -j bad_tcp_packets
+  iptables -A INPUT -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
+  iptables -A FORWARD -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
 
   #------ Port scan rules - DROP -----------------------------------------#
   iptables -N PORTSCAN
@@ -172,7 +202,7 @@ beginFwRules_FW_RUI() {
   iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP
 
   iptables -A bad_tcp_packets -p tcp --tcp-flags SYN,ACK ACK,SYN -m state --state NEW -j LOG --log-prefix "CHAIN [bad_tcp_packets] MATCH [SYN,ACK New]"
-  iptables -A bad_tcp_packets -p tcp --tcp-flags SYN,ACK ACK,SYN -m state --state NEW -j REJECT --reject-with --tcp-reset
+  iptables -A bad_tcp_packets -p tcp --tcp-flags SYN,ACK ACK,SYN -m state --state NEW -j REJECT --reject-with tcp-reset
 
   iptables -A bad_tcp_packets -p tcp ! --syn -m state --state NEW -j LOG --log-prefix "CHAIN [bad_tcp_packets] MATCH [not SYN new]"
   iptables -A bad_tcp_packets -p tcp ! --syn -m state --state NEW -j DROP
@@ -185,22 +215,22 @@ beginFwRules_FW_RUI() {
   iptables -N allowed_packets
   iptables -A allowed_packets -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-  iptables -A INPUT -p ALL -i "${WAN_IFACE_RUI}" -j allowed_packets
-  iptables -A FORWARD -p ALL -i "${WAN_IFACE_RUI}" -j allowed_packets
-  iptables -A OUTPUT -p ALL -s "${LO_IP_RUI}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
-  iptables -A OUTPUT -p ALL -o "${WAN_IFACE_RUI}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
+  iptables -A INPUT -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
+  iptables -A FORWARD -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
+  iptables -A OUTPUT -p ALL -s "${LO_IP_FW_RUI}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
+  iptables -A OUTPUT -p ALL -o "${WAN_IFACE_FW_RUI}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
 
   # all open tcp ports
-  iptables -A INPUT -s "${TRUSTED_WAN_SN_RUI}" -p tcp -m set --match-set "${IN_TCP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
-  iptables -A INPUT -s "${TRUSTED_WAN_SN_RUI}" -p udp -m set --match-set "${IN_UDP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
+  iptables -A INPUT -s "${TRUSTED_WAN_FW_RUI}" -p tcp -m set --match-set "${IN_TCP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
+  iptables -A INPUT -s "${TRUSTED_WAN_FW_RUI}" -p udp -m set --match-set "${IN_UDP_FW_PORTS}" -m conntrack --ctstate NEW -j ACCEPT
   iptables -A INPUT -i "${LO_IFACE}" -p ALL -s "${LO_IP}" -j ACCEPT
 
   # ----- MASQUERADE (for DHCP WAN)------------------------------------------- #
-  if [ ${WAN_IP_RUI}="nd" ]; then
-    iptables -t nat -A POSTROUTING -o "${WAN_IFACE_RUI}" -j MASQUERADE
+  if [[ "${WAN_IP_FW_RUI}" == "nd" ]]; then
+    iptables -t nat -A POSTROUTING -o "${WAN_IFACE_FW_RUI}" -j MASQUERADE
   else
     # ----- Use SNAT: we don't receive WAN address via DHCP --------------------------------#
-    iptables -t nat -A POSTROUTING -o "${WAN_IFACE_RUI}" -j SNAT --to-source "${WAN_IP_RUI}"
+    iptables -t nat -A POSTROUTING -o "${WAN_IFACE_FW_RUI}" -j SNAT --to-source "${WAN_IP_FW_RUI}"
   fi
   # default policies for filter tables
   iptables -P INPUT DROP
@@ -238,12 +268,12 @@ synFloodProtection_FW_RUI() {
     --hashlimit-burst 15 --hashlimit-htable-expire 360000 \
     --hashlimit-mode srcip --hashlimit-name SYNC_FLOOD -j ACCEPT
 
-  iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI" --syn -m hashlimit \
+  iptables -A INPUT -p tcp --dport "$SSH_PORT_FW_RUI" --syn -m hashlimit \
     --hashlimit 2/hour --hashlimit-burst 7 --hashlimit-htable-expire 360000 \
     --hashlimit-mode srcip --hashlimit-name SSH_FLOOD -j ACCEPT
 
   # no extentions tbf available for Debian
-  # iptables -A INPUT -p tcp --dport "$SSH_PORT_RUI" --syn -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
+  # iptables -A INPUT -p tcp --dport "$SSH_PORT_FW_RUI" --syn -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
   # iptables -A INPUT -p tcp --syn -m tbf ! --tbf 1/s --tbf-deep 15 --tbf-mode srcip --tbf-name SYNC_FLOOD -j DROP
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
@@ -298,41 +328,41 @@ insertFwLAN_FW_RUI() {
   local -r index_o=$7 # OUTPUT
 
   # -- Start ICMP -------------------------------------------------------- #
-  if [ "${index_f}"="nd" ]; then
+  if [[ "${index_f}" == "nd" ]]; then
     iptables -A FORWARD -p icmp --icmp-type echo-request -s "${lan_sn}" -d "0/0" -m state --state NEW -j ACCEPT
   else
     iptables -I FORWARD "${index_f}" -p icmp --icmp-type echo-request -s "${lan_sn}" -d "0/0" -m state --state NEW -j ACCEPT
   fi
 
-  if [ "${index_i}"="nd" ]; then
+  if [[ "${index_i}" == "nd" ]]; then
     iptables -A INPUT -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
     # Allow connect to SSH from LAN
-    iptables -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
-    iptables -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_RUI}" -m state --state NEW -j ACCEPT
+    iptables -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_FW_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
+    iptables -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_FW_RUI}" -m state --state NEW -j ACCEPT
   else
     iptables -I INPUT "${index_i}" -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
     let ++index_i
     # Allow connect to SSH from LAN
     iptables -I INPUT "${index_i}" -p tcp -s "${lan_sn}" -d "${lan_ip}" \
-      --dport "${SSH_PORT_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
+      --dport "${SSH_PORT_FW_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
     let ++index_i
-    iptables -I INPUT "${index_i}" -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_RUI}" -m state --state NEW -j ACCEPT
+    iptables -I INPUT "${index_i}" -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_FW_RUI}" -m state --state NEW -j ACCEPT
   fi
 
-  if [ "${index_f}"="nd" ]; then
-    iptables -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
-    iptables -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
+  if [[ "${index_f}" == "nd" ]]; then
+    iptables -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_FW_RUI}" -s "${lan_sn}" -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
+    iptables -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_FW_RUI}" -s "${lan_sn}" -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
   else
     let ++index_f
-    iptables -I FORWARD "${index_f}" -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" \ 
+    iptables -I FORWARD "${index_f}" -i "${lan_iface}" -o "${WAN_IFACE_FW_RUI}" -s "${lan_sn}" \ 
     -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
 
     let ++index_f
-    iptables -I FORWARD "${index_f}" -i "${lan_iface}" -o "${WAN_IFACE_RUI}" -s "${lan_sn}" \
+    iptables -I FORWARD "${index_f}" -i "${lan_iface}" -o "${WAN_IFACE_FW_RUI}" -s "${lan_sn}" \
       -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
   fi
 
-  if [ "${index_o}"="nd" ]; then
+  if [[ "${index_o}" == "nd" ]]; then
     iptables -A OUTPUT -p ALL -s "${lan_sn}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
   else
     iptables -I OUTPUT "${index_o}" -p ALL -s "${lan_sn}" -m state -state NEW,ESTABLISHED,RELATED -j ACCEPT
@@ -389,10 +419,10 @@ portForwarding_FW_RUI() {
 
   local -r dest_port=$([ -z "$1" ] && echo "2222" || echo "$1")
   local -r fwd_ip=$([ -z "$2" ] && echo "10.10.0.21" || echo "$2")
-  local -r fwd_port=$([ -z "$3" ] && echo "$SSH_PORT_RUI" || echo "$3")
+  local -r fwd_port=$([ -z "$3" ] && echo "$SSH_PORT_FW_RUI" || echo "$3")
 
-  iptables -A FORWARD -i "${WAN_IFACE_RUI}" -p tcp -d "${fwd_ip}" --dport "${fwd_port}" -j ACCEPT
-  iptables -t nat -I PREROUTING -p tcp -i "${WAN_IFACE_RUI}" --dport "${dest_port}" -j DNAT --to "${fwd_ip}":"${fwd_port}"
+  iptables -A FORWARD -i "${WAN_IFACE_FW_RUI}" -p tcp -d "${fwd_ip}" --dport "${fwd_port}" -j ACCEPT
+  iptables -t nat -I PREROUTING -p tcp -i "${WAN_IFACE_FW_RUI}" --dport "${dest_port}" -j DNAT --to "${fwd_ip}":"${fwd_port}"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }

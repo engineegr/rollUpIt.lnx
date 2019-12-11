@@ -42,6 +42,7 @@ doInstallCustoms_SM_RUI() {
     "install_vim8_INSTALL_RUI"
     "install_grc_INSTALL_RUI"
     "install_rcm_INSTALL_RUI"
+    "install_virtualenvwrapper_INSTALL_RUI"
   )
 
   # runInBackground_COMMON_RUI "install_python3_7_INSTALL_RUI"

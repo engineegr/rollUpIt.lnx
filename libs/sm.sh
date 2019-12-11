@@ -80,15 +80,27 @@ skeletonUserHome_SM_RUI() {
       onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
       exit 1
     fi
+    printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles Update home config [rcup -fv -t tmux -t vim] ${END_ROLLUP_IT}\n" >&2
     rcup -fv -t tmux -t vim
     rc="$?"
     if [ "$rc" -ne 0 ]; then
       onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
       exit 1
     fi
+
+    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
+    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
+    python install.py --clang-completer
+    rc="$?"
+    if [ "$rc" -ne 0 ]; then
+      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
+      exit 1
+    fi
   else
     printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
   fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
 #
@@ -451,13 +463,14 @@ baseSetup_SM_RUI() {
   local locale_str=$(doGetLocaleStr)
   setLocale_SM_RUI ${locale_str}
   setupNtpd_SM_RUI
-  setupUnattendedUpdates
-  upgradePip3_7
+  setupUnattendedUpdates_SM_RUI
+  upgradePip3_7_INSTALL_RUI
+  install_virtualenvwrapper_INSTALL_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
-setupUnattendedUpdates() {
+setupUnattendedUpdates_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -538,40 +551,4 @@ EOF
   fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
-}
-
-getSysInfo_COMMON_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-
-  clrsScreen_TTY_RUI
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  local -r os_info="$(uname -a)"
-  local -r distr_info=$(cat /etc/*-release)
-  local -r platform_info="$(dmidecode -t system)"
-  local -r mem_usage_info="$(free -h)"
-  local -r disk_usage_info="$(df -hl)"
-
-  local -r max_x="$(max_x_TTY_RUI)"
-  local cy="$(cpos_y_TTY_RUI)"
-
-  local -r head_os_info="INFO: Linux Kernel"
-  local -r head_distr_info="INFO: Distributive"
-  local -r head_platform_info="INFO: Platform"
-  local -r head_memus_info="INFO: Memory usage"
-  local -r head_diskus_info="INFO: Disk usage"
-
-  printf "${GRN_ROLLUP_IT}${head_os_info}${END_ROLLUP_IT}"
-  to_xy_TTY_RUI $(($max_x - ${#os_info} - 1)) $(($cy - 1))
-  printf "${CYN_ROLLUP_IT}${os_info}${END_ROLLUP_IT}\n\n"
-
-  backPrint_COMMON_RUI "${head_distr_info}" "${distr_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" ""
-  backPrint_COMMON_RUI "${head_platform_info}" "${platform_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" "true"
-  backPrint_COMMON_RUI "${head_memus_info}" "${mem_usage_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" ""
-  # backPrint_COMMON_RUI "${head_diskus_info}" "${disk_usage_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" "true"
-  printf "${GRN_ROLLUP_IT}${head_diskus_info}${END_ROLLUP_IT}\n"
-  echo "${CYN_ROLLUP_IT}${disk_usage_info}${END_ROLLUP_IT}"
-
-  printf "\n"
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
