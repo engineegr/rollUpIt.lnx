@@ -12,8 +12,9 @@ help_FW_RUI() {
   echo "Usage:" >&2
   echo "-h - print help" >&2
   echo "--install - install <iptables-persistent> and <ip-set>" >&2
-  echo "--wan - WAN (format: --wan int=... sn=... addr=... [--lan int=... sn=... addr=... [index_i=... index_f=... index_o=...]])" >&2
-  echo "--lan - LAN (format: --lan int=... sn=... addr=... index_i=... index_f=... index_o=...)" >&2
+  echo "--wan - WAN (format: --wan int=... sn=... addr=...)" >&2
+  echo "--lan - LAN (format: --lan int=... sn=... addr=... [index_i=... index_f=... index_o=...]) - required if we define WAN." >&2
+  echo "In case when we define WAN, index_{i,f,o} is not requred" >&2
   echo "--link lan001_iface=... lan002_iface=..."
   echo "--reset - reset rules" >&2
   echo "--lf - list filter rules" >&2
@@ -189,10 +190,9 @@ beginFwRules_FW_RUI() {
     exit 1
   fi
 
-  local -r WAN_IFACE_FW_RUI="$1"
+  declare -rg WAN_IFACE_FW_RUI="$1"
   local -r WAN_SN_FW_RUI="$2"
   local -r WAN_IP_FW_RUI="${3:-'nd'}"
-  local -r TRUSTED_WAN_FW_RUI=$([ -z "$4"] && echo "${WAN_SN_FW_RUI}" || echo "$4")
   local -r LOCAL_FTP_FW_RUI="172.17.0.132"
 
   # Always accept loopback traffic
@@ -231,32 +231,32 @@ beginFwRules_FW_RUI() {
   iptables -v -A INPUT -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
 
   # for DEBUG aim: 172.17.0.130 - VirtualBox ip; 172.17.0.132 - FTP
-  iptables -v -A INPUT -p tcp -s "172.17.0.130" -d "172.17.0.134" --dport 22 -m limit --limit 3/minute --limit-burst 3 \
-    -j LOG --log-level 7 --log-prefix "CHAIN [INPUT] [ssh,ER,src=.130]"
-  iptables -v -A INPUT -p tcp -s "172.17.0.130" -d "172.17.0.134" --dport 22 -j allowed_packets
+  #iptables -v -A INPUT -p tcp -s "172.17.0.130" -d "172.17.0.134" --dport 22 -m limit --limit 3/minute --limit-burst 3 \
+  #  -j LOG --log-level 7 --log-prefix "CHAIN [INPUT] [ssh,ER,src=.130]"
 
-  iptables -v -A INPUT -p tcp -s "${LOCAL_FTP_FW_RUI}" -d "172.17.0.134" -m limit --limit 3/minute --limit-burst 3 \
-    -j LOG --log-level 7 --log-prefix "CHAIN [INPUT] [ftp,ER,src=.132]"
-  iptables -v -A INPUT -p tcp -s "${LOCAL_FTP_FW_RUI}" -d "172.17.0.134" -j allowed_packets
+  #iptables -v -A INPUT -p tcp -s "172.17.0.130" -d "172.17.0.134" --dport 22 -j allowed_packets
 
+  #iptables -v -A INPUT -p tcp -s "${LOCAL_FTP_FW_RUI}" -d "172.17.0.134" -m limit --limit 3/minute --limit-burst 3 \
+  #  -j LOG --log-level 7 --log-prefix "CHAIN [INPUT] [ftp,ER,src=.132]"
+
+  #iptables -v -A INPUT -p tcp -s "${LOCAL_FTP_FW_RUI}" -d "172.17.0.134" -j allowed_packets
+  #
   iptables -v -A FORWARD -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
-  iptables -v -A OUTPUT -p ALL --src "${LO_IP_FW_RUI}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
-  iptables -v -A OUTPUT -p ALL -o "${WAN_IFACE_FW_RUI}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+  iptables -v -A OUTPUT -p ALL --src "${LO_IP_FW_RUI}" -j ACCEPT
+  iptables -v -A OUTPUT -p ALL -o "${WAN_IFACE_FW_RUI}" -j ACCEPT
 
   # for DEBUG aim: 172.17.0.130 - VirtualBox ip; 172.17.0.132 - FTP
-  iptables -v -A OUTPUT -p ALL -d "172.17.0.130" -m state --state ESTABLISHED,RELATED -j ACCEPT
-
-  # all open tcp ports for TRUSTED WAN
-  iptables -v -A INPUT -s "${TRUSTED_WAN_FW_RUI}" -p tcp -m set --match-set "${IN_TCP_FW_PORTS}" dst -m conntrack --ctstate NEW -j ACCEPT
+  # iptables -v -A OUTPUT -p tcp -d "172.17.0.130" -j allowed_packets
 
   # for DEBUG aim: 172.17.0.130 - VirtualBox ip
-  iptables -v -A INPUT -s "172.17.0.130" -d "172.17.0.134" -p tcp --dport 22 -m limit --limit 3/minute --limit-burst 3 \
-    -m conntrack --ctstate NEW -j LOG --log-level 7 --log-prefix "CHAIN [INPUT] [ssh,NEW,src=.130]"
-  iptables -v -A INPUT -s "172.17.0.130" -d "172.17.0.134" -p tcp --dport 22 -j ACCEPT
+  #iptables -v -A INPUT -s "172.17.0.130" -d "172.17.0.134" -p tcp --dport 22 -m limit --limit 3/minute --limit-burst 3 \
+  #  -m conntrack --ctstate NEW -j LOG --log-level 7 --log-prefix "CHAIN [INPUT] [ssh,NEW,src=.130]"
 
-  iptables -v -A INPUT -s "${TRUSTED_WAN_FW_RUI}" -p udp -m set --match-set "${IN_UDP_FW_PORTS}" dst -m conntrack --ctstate NEW -j ACCEPT
-  iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -p ALL -s "${LO_IP_FW_RUI}" -j ACCEPT
+  #iptables -v -A INPUT -s "172.17.0.130" -d "172.17.0.134" -p tcp --dport 22 -j ACCEPT
 
+  iptables -v -A INPUT -p ALL -i "${LO_IFACE_FW_RUI}" -s "${LO_IP_FW_RUI}" -j ACCEPT
+
+  printf "${debug_prefix} ${GRN_ROLLUP_IT} Debug WAN IP: ${WAN_IP_FW_RUI} ${END_ROLLUP_IT}\n"
   # ----- MASQUERADE (for DHCP WAN)------------------------------------------- #
   if [[ "${WAN_IP_FW_RUI}" == "nd" ]]; then
     iptables -v -t nat -A POSTROUTING -o "${WAN_IFACE_FW_RUI}" -j MASQUERADE
@@ -265,8 +265,8 @@ beginFwRules_FW_RUI() {
     iptables -v -t nat -A POSTROUTING -o "${WAN_IFACE_FW_RUI}" -j SNAT --to-source "${WAN_IP_FW_RUI}"
   fi
 
-  pingOfDeathProtection_FW_RUI
-  synFloodProtection_FW_RUI
+  # pingOfDeathProtection_FW_RUI
+  #  synFloodProtection_FW_RUI
   # default policies for filter tables
   iptables -v -P INPUT DROP
   iptables -v -P FORWARD DROP
@@ -348,6 +348,7 @@ saveFwState_FW_RUI() {
 # arg5 - index_i (INPUT start index)
 # arg6 - index_f (FORWARD -/-)
 # arg7 - index_o (OUTPUT -/-)
+# arg8 - trusted ipset for ssh connection
 #
 insertFwLAN_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
@@ -358,9 +359,11 @@ insertFwLAN_FW_RUI() {
   local -r lan_ip=$([ -z "$3" ] && echo "10.10.0.1" || echo "$3")
   local -r out_tcp_port_set=$([ -z "$4" ] && echo "OUT_TCP_FWR_PORTS" || echo "$4")
   local -r out_udp_port_set=$([ -z "$5" ] && echo "OUT_UDP_FWR_PORTS" || echo "$5")
-  local -r index_i=$5 # insert index INPUT
-  local -r index_f=$6 # FORWARD
-  local -r index_o=$7 # OUTPUT
+  local -r wan_iface=${6:-WAN_IFACE_FW_RUI}
+  local -r index_i=${7:-'nd'}    # insert index INPUT
+  local -r index_f=${8:-'nd'}    # insert index INPUT
+  local -r index_o=${9:-'nd'}    # FORWARD
+  local -r trusted_ipset="${10}" # OUTPUT
 
   # -- Start ICMP -------------------------------------------------------- #
   if [[ "${index_f}" == "nd" ]]; then
@@ -371,36 +374,64 @@ insertFwLAN_FW_RUI() {
 
   if [[ "${index_i}" == "nd" ]]; then
     iptables -v -A INPUT -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
-    # Allow connect to SSH from LAN
-    iptables -v -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_FW_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
-    iptables -v -A INPUT -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_FW_RUI}" -m state --state NEW -j ACCEPT
+    # Allow connect to tcp ports from LAN
+    iptables -v -A INPUT -p tcp -i "${lan_iface}" -m set --match-set "${trusted_ipset}" src \
+      -m set --match-set "${IN_TCP_FW_PORTS}" dst \
+      -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT,NER] [TCP from LAN-trusted]"
+    iptables -v -A INPUT -p tcp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
+      -m set --match-set "${IN_TCP_FW_PORTS}" dst \
+      -j ACCEPT
+    # Allow connect to udp ports from LAN
+    iptables -v -A INPUT -p udp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
+      -m set --match-set "${IN_UDP_FW_PORTS}" dst \
+      -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT,NER] [UDP from LAN-trusted]"
+    iptables -v -A INPUT -p udp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
+      -m set --match-set "${IN_UDP_FW_PORTS}" dst -j ACCEPT
+
   else
     iptables -v -I INPUT "${index_i}" -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
     let ++index_i
-    # Allow connect to SSH from LAN
-    iptables -v -I INPUT "${index_i}" -p tcp -s "${lan_sn}" -d "${lan_ip}" \
-      --dport "${SSH_PORT_FW_RUI}" -m state --state NEW -j LOG --log-prefix "CHAIN [INPUT] MATCH [SSH from LAN]"
+    # Allow to connect to TCP-ports from LAN trusted hosts
+    iptables -v -I INPUT "${index_i}" -p tcp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
+      -m set --match-set "${IN_TCP_FW_PORTS}" dst \
+      -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT,NER] [TCP from LAN-trusted]"
     let ++index_i
-    iptables -v -I INPUT "${index_i}" -p tcp -s "${lan_sn}" -d "${lan_ip}" --dport "${SSH_PORT_FW_RUI}" -m state --state NEW -j ACCEPT
+    iptables -v -I INPUT "${index_i}" -p tcp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
+      -m set --match-set "${IN_TCP_FW_PORTS}" dst -j ACCEPT
+    let ++index_i
+    # Allow to connect to UDP-ports from LAN trusted hosts
+    iptables -v -I INPUT "${index_i}" -p udp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
+      -m set --match-set "${IN_TCP_FW_PORTS}" dst \
+      -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT,NER] [UDP from LAN-trusted]"
+    let ++index_i
+    iptables -v -I INPUT "${index_i}" -p udp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
+      -m set --match-set "${IN_TCP_FW_PORTS}" dst -j ACCEPT
+
   fi
 
   if [[ "${index_f}" == "nd" ]]; then
-    iptables -v -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_FW_RUI}" -s "${lan_sn}" -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
-    iptables -v -A FORWARD -i "${lan_iface}" -o "${WAN_IFACE_FW_RUI}" -s "${lan_sn}" -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
+    iptables -v -A FORWARD -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
+    iptables -v -A FORWARD -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
   else
     let ++index_f
-    iptables -v -I FORWARD "${index_f}" -i "${lan_iface}" -o "${WAN_IFACE_FW_RUI}" -s "${lan_sn}" \ 
+    iptables -v -I FORWARD "${index_f}" -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" \ 
     -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
 
     let ++index_f
-    iptables -v -I FORWARD "${index_f}" -i "${lan_iface}" -o "${WAN_IFACE_FW_RUI}" -s "${lan_sn}" \
+    iptables -v -I FORWARD "${index_f}" -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" \
       -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
   fi
 
   if [[ "${index_o}" == "nd" ]]; then
-    iptables -v -A OUTPUT -p ALL -s "${lan_sn}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+    iptables -v -A OUTPUT -p ALL -s "${lan_sn}" -m state --state ESTABLISHED,RELATED -j ACCEPT
+    iptables -v -A OUTPUT -p ALL -s "${lan_ip}" -o "${LO_IFACE_FW_RUI}" -j ACCEPT
+    iptables -v -A OUTPUT -p ALL -o "${lan_iface}" -j ACCEPT
   else
-    iptables -v -I OUTPUT "${index_o}" -p ALL -s "${lan_sn}" -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+    iptables -v -I OUTPUT "${index_o}" -p ALL -s "${lan_sn}" -m state --state ESTABLISHED,RELATED -j ACCEPT
+    let ++index_o
+    iptables -v -I OUTPUT "${index_o}" -p ALL -o "${lan_iface}" -j ACCEPT
+    let ++index_o
+    iptables -v -A OUTPUT -p ALL -s "${lan_ip}" -o "${LO_IFACE_FW_RUI}" -j ACCEPT
   fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
