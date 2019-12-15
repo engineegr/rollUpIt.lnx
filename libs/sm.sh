@@ -463,6 +463,7 @@ baseSetup_SM_RUI() {
   local locale_str=$(doGetLocaleStr)
   setLocale_SM_RUI ${locale_str}
   setupNtpd_SM_RUI
+  setupLogging_SM_RUI
   setupUnattendedUpdates_SM_RUI
   upgradePip3_7_INSTALL_RUI
   install_virtualenvwrapper_INSTALL_RUI
@@ -549,6 +550,16 @@ EOF
     printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't start ntpd with [systemctl start ntpd]. Exit. ${END_ROLLUP_IT} \n"
     exit 1
   fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+setupLogging_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  setJournaldPersistent_LOGGING_RUI
+  deployCfg_LOGGING_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }

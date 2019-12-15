@@ -210,7 +210,7 @@ install_python3_7_INSTALL_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   if [ -e "/usr/local/bin/python3.7" ]; then
-    printf "$debug_prefix ${CYN_ROLLUP_IT} Python3.7 has been already  installed ${END_ROLLUP_IT} \n"
+    printf "$debug_prefix ${CYN_ROLLUP_IT} Python3.7 has been already installed ${END_ROLLUP_IT} \n"
   else
     tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX)
 
@@ -235,9 +235,9 @@ install_python3_7_INSTALL_RUI() {
         export LDFLAGS="${LDFLAGS} -L/mnt/sysimage/usr/local/lib/ -L/mnt/sysimage/usr/local/lib"
       fi
     fi
+    export LDFLAGS="${LDFLAGS} -Wl,-rpath /usr/local/lib"
     ./configure --enable-optimizations
-    # make altinstall
-    make install
+    make altinstall
 
     rm -rf $tmp_dir
 
