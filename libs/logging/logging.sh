@@ -30,19 +30,22 @@ cleanCfgDir_LOGGING_RUI() {
 deployCfg_LOGGING_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
   local -r root_rsyslogd_cfg="/etc/rsyslog.conf"
-  local -r rsyslogd_cfg="resources/logging/rsyslog.conf"
 
-  systemctl stop rsyslogd
+  if [ -e "${root_rsyslogd_cfg}.orig" ]; then
+    printf "${debug_prefix} ${GRN_ROLLUP_IT} [rsyslogd] setup has already done. Pass. ${END_ROLLUP_IT} \n"
+  else
+    local -r rsyslogd_cfg="resources/logging/rsyslog.conf"
 
-  cleanCfgDir_LOGGING_RUI
-  mv "$root_rsyslogd_cfg" "${root_rsyslogd_cfg}.orig"
-  cp "$rsyslogd_cfg" "/etc/"
+    systemctl stop rsyslogd
 
-  systemctl daemon-reload
-  systemctl start rsyslogd
+    cleanCfgDir_LOGGING_RUI
+    mv "$root_rsyslogd_cfg" "${root_rsyslogd_cfg}.orig"
+    cp "$rsyslogd_cfg" "/etc/"
 
+    systemctl daemon-reload
+    systemctl start rsyslogd
+  fi
   printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
   return $?
 }

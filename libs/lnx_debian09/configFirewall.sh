@@ -12,7 +12,7 @@ help_FW_RUI() {
   echo "Usage:" >&2
   echo "-h - print help" >&2
   echo "--install - install <iptables-persistent> and <ip-set>" >&2
-  echo "--wan - WAN (format: --wan int=... sn=... addr=...)" >&2
+  echo "--wan - WAN (format: --wan int=... sn=... addr=... [in_tcp_pset=... in_udp_pset=...]" >&2
   echo "--lan - LAN (format: --lan int=... sn=... addr=... [index_i=... index_f=... index_o=...]) - required if we define WAN." >&2
   echo "In case when we define WAN, index_{i,f,o} is not requred" >&2
   echo "--link lan001_iface=... lan002_iface=..."
@@ -177,9 +177,11 @@ clearFwState_FW_RUI() {
 }
 
 #
-# arg0 - wan NIC
-# arg1 - wan subnet
-# arg2 - wan ip
+# arg1 - wan NIC
+# arg2 - wan subnet
+# arg3 - wan ip
+# arg4 - input tcp WAN port set
+# arg5 - input udp WAN port set
 #
 beginFwRules_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
@@ -194,6 +196,8 @@ beginFwRules_FW_RUI() {
   local -r WAN_SN_FW_RUI="$2"
   local -r WAN_IP_FW_RUI="${3:-'nd'}"
   local -r LOCAL_FTP_FW_RUI="172.17.0.132"
+  local -r in_tcp_wan_port_set="${4:-'nd'}"
+  local -r in_udp_wan_port_set="${5:-'nd'}"
 
   # Always accept loopback traffic
   iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -j ACCEPT
@@ -230,6 +234,32 @@ beginFwRules_FW_RUI() {
 
   iptables -v -A INPUT -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
 
+  if [ "${in_tcp_wan_port_set}" != 'nd' ]; then
+    if [ -z "$(ipset list -n | grep "${in_tcp_wan_port_set}")" ]; then
+      synTCPFloodProtection_FW_RUI
+
+      iptables -v -A INPUT -p tcp --syn -i "${WAN_IFACE_FW_RUI}" -m set --match-set "${in_tcp_wan_port_set}" dst \
+        -j LOG --log-prefix "[INPUT] [New, WAN, tcp ports]"
+      iptables -v -A INPUT -p tcp --syn -i "${WAN_IFACE_FW_RUI}" -m set --match-set "${in_tcp_wan_port_set}" dst \
+        -j ACCEPT
+    else
+      printf "${debug_prefix} ${RED_ROLLUP_IT} Error: invalid input TCP WAN port set ${END_ROLLUP_IT}\n"
+      exit 1
+    fi
+  fi
+
+  if [ "${in_udp_wan_port_set}" != 'nd' ]; then
+    if [ -z "$(ipset list -n | grep "${in_udp_wan_port_set}")" ]; then
+      iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW -m set --match-set "${in_udp_wan_port_set}" dst \
+        -j LOG --log-prefix "[INPUT] [New, WAN, UDP ports]"
+      iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW -m set --match-set "${in_udp_wan_port_set}" dst \
+        -j ACCEPT
+    else
+      printf "${debug_prefix} ${RED_ROLLUP_IT} Error: invalid input TCP WAN port set ${END_ROLLUP_IT}\n"
+      exit 1
+    fi
+  fi
+
   # for DEBUG aim: 172.17.0.130 - VirtualBox ip; 172.17.0.132 - FTP
   #iptables -v -A INPUT -p tcp -s "172.17.0.130" -d "172.17.0.134" --dport 22 -m limit --limit 3/minute --limit-burst 3 \
   #  -j LOG --log-level 7 --log-prefix "CHAIN [INPUT] [ssh,ER,src=.130]"
@@ -265,8 +295,6 @@ beginFwRules_FW_RUI() {
     iptables -v -t nat -A POSTROUTING -o "${WAN_IFACE_FW_RUI}" -j SNAT --to-source "${WAN_IP_FW_RUI}"
   fi
 
-  # pingOfDeathProtection_FW_RUI
-  #  synFloodProtection_FW_RUI
   # default policies for filter tables
   iptables -v -P INPUT DROP
   iptables -v -P FORWARD DROP
@@ -295,7 +323,7 @@ pingOfDeathProtection_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-synFloodProtection_FW_RUI() {
+synTCPFloodProtection_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
