@@ -12,10 +12,10 @@ help_FW_RUI() {
   echo "Usage:" >&2
   echo "-h - print help" >&2
   echo "--install - install <iptables-persistent> and <ip-set>" >&2
-  echo "--wan - WAN (format: --wan int=... sn=... addr=... [in_tcp_pset=... in_udp_pset=...]" >&2
-  echo "--lan - LAN (format: --lan int=... sn=... addr=... [index_i=... index_f=... index_o=...]) - required if we define WAN." >&2
+  echo "--wan - WAN (format: --wan int=... sn=... ip=... [in_tcp_pset=... in_udp_pset=...]" >&2
+  echo "--lan - LAN (format: --lan int=... sn=... ip=... [wan_int=... index_i=... index_f=... index_o=...]) - required if we define WAN." >&2
   echo "In case when we define WAN, index_{i,f,o} is not requred" >&2
-  echo "--link lan001_iface=... lan002_iface=..."
+  echo "--link lan001_iface=... lan002_iface=... index_f=..."
   echo "--reset - reset rules" >&2
   echo "--lf - list filter rules" >&2
   echo "--ln - list nat rules" >&2
@@ -272,6 +272,9 @@ beginFwRules_FW_RUI() {
   #iptables -v -A INPUT -p tcp -s "${LOCAL_FTP_FW_RUI}" -d "172.17.0.134" -j allowed_packets
   #
   iptables -v -A FORWARD -p ALL -i "${WAN_IFACE_FW_RUI}" -j allowed_packets
+  iptables -v -A FORWARD -p icmp --icmp-type 8 -j allowed_packets
+  iptables -v -A FORWARD -p icmp --icmp-type 11 -j allowed_packets
+
   iptables -v -A OUTPUT -p ALL --src "${LO_IP_FW_RUI}" -j ACCEPT
   iptables -v -A OUTPUT -p ALL -o "${WAN_IFACE_FW_RUI}" -j ACCEPT
 
@@ -387,10 +390,10 @@ insertFwLAN_FW_RUI() {
   local -r lan_ip=$([ -z "$3" ] && echo "10.10.0.1" || echo "$3")
   local -r out_tcp_port_set=$([ -z "$4" ] && echo "OUT_TCP_FWR_PORTS" || echo "$4")
   local -r out_udp_port_set=$([ -z "$5" ] && echo "OUT_UDP_FWR_PORTS" || echo "$5")
-  local -r wan_iface=${6:-WAN_IFACE_FW_RUI}
-  local -r index_i=${7:-'nd'}    # insert index INPUT
-  local -r index_f=${8:-'nd'}    # insert index INPUT
-  local -r index_o=${9:-'nd'}    # FORWARD
+  local -r wan_iface=${6:-${WAN_IFACE_FW_RUI}}
+  local index_i=${7:-'nd'}       # insert index INPUT
+  local index_f=${8:-'nd'}       # insert index INPUT
+  local index_o=${9:-'nd'}       # FORWARD
   local -r trusted_ipset="${10}" # OUTPUT
 
   # -- Start ICMP -------------------------------------------------------- #
@@ -402,22 +405,38 @@ insertFwLAN_FW_RUI() {
 
   if [[ "${index_i}" == "nd" ]]; then
     iptables -v -A INPUT -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
-    # Allow connect to tcp ports from LAN
+    # Allow ER connections from LAN (ALL protocols)
+    iptables -v -A INPUT -p ALL -i "${lan_iface}" -s "${lan_sn}" \
+      -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT, ER] [P ALL from LAN]"
+    iptables -v -A INPUT -p ALL -i "${lan_iface}" -s "${lan_sn}" -j allowed_packets
+
+    # Allow to initiate connections to tcp ports from LAN
     iptables -v -A INPUT -p tcp -i "${lan_iface}" -m set --match-set "${trusted_ipset}" src \
       -m set --match-set "${IN_TCP_FW_PORTS}" dst \
-      -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT,NER] [TCP from LAN-trusted]"
+      -m state --state NEW \
+      -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT,NEW] [TCP from LAN-trusted]"
     iptables -v -A INPUT -p tcp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
       -m set --match-set "${IN_TCP_FW_PORTS}" dst \
+      -m state --state NEW \
       -j ACCEPT
-    # Allow connect to udp ports from LAN
+    # Allow cto initiate connections to udp ports from LAN
     iptables -v -A INPUT -p udp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
       -m set --match-set "${IN_UDP_FW_PORTS}" dst \
+      -m state --state NEW \
       -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT,NER] [UDP from LAN-trusted]"
     iptables -v -A INPUT -p udp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
+      -m state --state NEW \
       -m set --match-set "${IN_UDP_FW_PORTS}" dst -j ACCEPT
 
   else
     iptables -v -I INPUT "${index_i}" -p icmp --icmp-type echo-request -s "${lan_sn}" -m state --state NEW -j ACCEPT
+    let ++index_i
+
+    iptables -v -I INPUT "${index_i}" -p ALL -i "${lan_iface}" -s "${lan_sn}" \
+      -m limit --limit 3/minute --limit-burst 3 -j LOG --log-prefix "CHAIN [INPUT, ER] [P ALL from LAN]"
+    let ++index_i
+    iptables -v -I INPUT "${index_i}" -p ALL -i "${lan_iface}" -s "${lan_sn}" -j allowed_packets
+
     let ++index_i
     # Allow to connect to TCP-ports from LAN trusted hosts
     iptables -v -I INPUT "${index_i}" -p tcp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
@@ -434,32 +453,29 @@ insertFwLAN_FW_RUI() {
     let ++index_i
     iptables -v -I INPUT "${index_i}" -p udp -i "${lan_iface}" -m set --set "${trusted_ipset}" src \
       -m set --match-set "${IN_TCP_FW_PORTS}" dst -j ACCEPT
-
   fi
 
   if [[ "${index_f}" == "nd" ]]; then
-    iptables -v -A FORWARD -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
-    iptables -v -A FORWARD -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
+    iptables -v -A FORWARD -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" -p tcp -m set --match-set "${out_tcp_port_set}" dst -j ACCEPT
+    iptables -v -A FORWARD -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" -p udp -m set --match-set "${out_udp_port_set}" dst -j ACCEPT
   else
     let ++index_f
-    iptables -v -I FORWARD "${index_f}" -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" \ 
-    -p tcp -m set --match-set "${out_tcp_port_set}" dst -m state --state NEW -j ACCEPT
+    iptables -v -I FORWARD "${index_f}" -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" \
+      -p tcp -m set --match-set "${out_tcp_port_set}" dst -j ACCEPT
 
     let ++index_f
     iptables -v -I FORWARD "${index_f}" -i "${lan_iface}" -o "${wan_iface}" -s "${lan_sn}" \
-      -p udp -m set --match-set "${out_udp_port_set}" dst -m state --state NEW -j ACCEPT
+      -p udp -m set --match-set "${out_udp_port_set}" dst -j ACCEPT
   fi
 
   if [[ "${index_o}" == "nd" ]]; then
-    iptables -v -A OUTPUT -p ALL -s "${lan_sn}" -m state --state ESTABLISHED,RELATED -j ACCEPT
+    iptables -v -A OUTPUT -p ALL -s "${lan_sn}" -j ACCEPT
     iptables -v -A OUTPUT -p ALL -s "${lan_ip}" -o "${LO_IFACE_FW_RUI}" -j ACCEPT
     iptables -v -A OUTPUT -p ALL -o "${lan_iface}" -j ACCEPT
   else
-    iptables -v -I OUTPUT "${index_o}" -p ALL -s "${lan_sn}" -m state --state ESTABLISHED,RELATED -j ACCEPT
+    iptables -v -I OUTPUT "${index_o}" -p ALL -s "${lan_sn}" -j ACCEPT
     let ++index_o
     iptables -v -I OUTPUT "${index_o}" -p ALL -o "${lan_iface}" -j ACCEPT
-    let ++index_o
-    iptables -v -A OUTPUT -p ALL -s "${lan_ip}" -o "${LO_IFACE_FW_RUI}" -j ACCEPT
   fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
@@ -481,14 +497,14 @@ linkFwLAN_FW_RUI() {
 
   local -r lan001_iface="$1"
   local -r lan002_iface="$2"
-  local -r index_f="$3"
+  local index_f="$3"
 
-  iptables -v -I FORWARD "${index_f}" -i "${lan001_iface}" -o "${lan002_iface}" \ 
-  -p ALL -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
+  iptables -v -I FORWARD "${index_f}" -i "${lan001_iface}" -o "${lan002_iface}" \
+    -p ALL -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
 
   let ++index_f
-  iptables -v -I FORWARD "${index_f}" -i "${lan002_iface}" -o "${lan001_iface}" \ 
-  -p ALL -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
+  iptables -v -I FORWARD "${index_f}" -i "${lan002_iface}" -o "${lan001_iface}" \
+    -p ALL -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
