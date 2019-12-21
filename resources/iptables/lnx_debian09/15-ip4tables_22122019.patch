@@ -1,12 +1,12 @@
---- /usr/share/netfilter-persistent/plugins.d/15-ip4tables	2019-12-22 00:31:04.098174066 +1100
-+++ /usr/share/netfilter-persistent/plugins.d/15-ip4tables.new	2019-12-22 01:27:30.133154033 +1100
+--- /usr/share/netfilter-persistent/plugins.d/15-ip4tables.orig	2019-12-22 01:29:43.085087664 +1100
++++ /usr/share/netfilter-persistent/plugins.d/15-ip4tables	2019-12-22 01:56:24.695030762 +1100
 @@ -16,6 +16,15 @@
  
  load_rules()
  {
-+  local -r ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
++  local ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
 +
-+  if [[ -e "$ipset_rules_v4_fp" ]]; then
++  if [ -e "${ipset_rules_v4_fp}" ]; then
 +    echo "Debug [ipset]: restore ipset rules store file \n"
 +    /sbin/ipset restore -file "${ipset_rules_v4_fp}" 
 +  else
@@ -21,12 +21,12 @@
  			rc=1
  		fi
 -	fi
-+    local -r ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
-+    if [[ ! -e "$ipset_rules_v4_fp" ]]; then
++    local ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
++    if [ ! -e "$ipset_rules_v4_fp" ]; then
 +      echo "Debug [ipset]: there is no the ipset rules store file: create it\n"
 +      if [[ ! -e "/etc/ipset" ]]; then
 +        mkdir "/etc/ipset"
-+        chmod 0755 "/etc/ipset"
++        chmod -Rf 0755 "/etc/ipset"
 +      fi
 +      touch "${ipset_rules_v4_fp}"
 +      chmod 0640 "${ipset_rules_v4_fp}"
