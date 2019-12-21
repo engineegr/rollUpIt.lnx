@@ -1,5 +1,5 @@
 --- /usr/share/netfilter-persistent/plugins.d/15-ip4tables	2019-12-22 00:31:04.098174066 +1100
-+++ /usr/share/netfilter-persistent/plugins.d/15-ip4tables.new	2019-12-22 00:57:23.791268640 +1100
++++ /usr/share/netfilter-persistent/plugins.d/15-ip4tables.new	2019-12-22 01:27:30.133154033 +1100
 @@ -16,6 +16,15 @@
  
  load_rules()
@@ -23,7 +23,7 @@
 -	fi
 +    local -r ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
 +    if [[ ! -e "$ipset_rules_v4_fp" ]]; then
-+      printf "$debug_prefix ${GRN_ROLLUP_IT} Debug: there is no the ipset rules store file: create it ${END_ROLLUP_IT}\n"
++      echo "Debug [ipset]: there is no the ipset rules store file: create it\n"
 +      if [[ ! -e "/etc/ipset" ]]; then
 +        mkdir "/etc/ipset"
 +        chmod 0755 "/etc/ipset"
