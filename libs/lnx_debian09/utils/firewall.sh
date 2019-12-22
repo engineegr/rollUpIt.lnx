@@ -45,7 +45,7 @@ loop_FW_RUI() {
   local -r LINK_EXP="--link\slan001_iface=.*\slan002_iface=.*\sindex_f=[[:digit:]]+"
   local -r RST_EXP="--reset"
   local -r INSTALL_EXP="--install"
-  if [ -z "$(echo $@ | grep -P "^((${WAN_EXP}(\s${LAN_EXP}))|(${IND_REQ_LAN_EXP})|(${LINK_EXP})|(${RST_EXP})|(${INSTALL_EXP})|(--lf)|(--ln))$")" ]; then
+  if [ -z "$(echo $@ | grep -P "^((${WAN_EXP}(\s${LAN_EXP}))|(${IND_REQ_LAN_EXP})|(${LINK_EXP})|(${RST_EXP})|(${INSTALL_EXP})|(--lf)|(--ln)|(-h))$")" ]; then
     printf "${debug_prefix} ${RED_ROLLUP_IT} ERROR: Invalid arguments ${END_ROLLUP_IT}\n"
     help_FW_RUI
     exit 1
@@ -218,6 +218,9 @@ loop_FW_RUI() {
             exit 1
             ;;
         esac
+        ;;
+      h)
+        help_FW_RUI
         ;;
     esac
   done
