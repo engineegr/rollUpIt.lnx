@@ -40,8 +40,10 @@ loop_FW_RUI() {
   local -r IP_EXP="([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}"
   local -r WAN_BASE="--wan\sint=.*\ssn=.*\sip=(${IP_EXP}|nd)"
   local -r WAN_EXP="${WAN_BASE}(\sin_tcp_pset=.*)*(\sin_udp_pset=.*)*"
-  local -r IND_REQ_LAN_EXP="--lan\sint=.*\ssn=.*\sip=${IP_EXP}\swan_int=.*\sindex_i=[[:digit:]]+\sindex_f=[[:digit:]]+\sindex_o=[[:digit:]]+"
-  local -r LAN_EXP="--lan\sint=.*\ssn=.*\sip=${IP_EXP}(\sindex_i=[[:digit:]]+\sindex_f=[[:digit:]]+\sindex_o=[[:digit:]]+)*"
+  local -r IND_REQ_LAN_EXP="${LAN_BASE}\swan_int=.*\sindex_i=[[:digit:]]+\sindex_f=[[:digit:]]+\sindex_o=[[:digit:]]+(trusted=.*)*"
+
+  local -r LAN_EXP="${LAN_BASE}(\sindex_i=[[:digit:]]+\sindex_f=[[:digit:]]+\sindex_o=[[:digit:]]+)*(trusted=.*)*"
+  local -r LAN_BASE="--lan\sint=.*\ssn=.*\sip=${IP_EXP}"
   local -r LINK_EXP="--link\slan001_iface=.*\slan002_iface=.*\sindex_f=[[:digit:]]+"
   local -r RST_EXP="--reset"
   local -r INSTALL_EXP="--install"
@@ -130,25 +132,43 @@ loop_FW_RUI() {
             local index_i="nd"
             local index_f="nd"
             local index_o="nd"
-            if [ -n "$(echo $@ | grep -P "^(${IND_REQ_LAN_EXP})$")" ]; then
+            local trusted_ipset="LAN001_TRUSTED_IPSET"
+            if [ "${if_begin}" = false ]; then
+              if [ -n "$(echo $@ | grep -P "^(${IND_REQ_LAN_EXP})$")" ]; then
 
-              OPTIND=$(($OPTIND + 1))
-              wan_iface="$(extractVal_COMMON_RUI "${!OPTIND}")"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} WAN IFACE: ${wan_iface} ${END_ROLLUP_IT}\n"
+                OPTIND=$(($OPTIND + 1))
+                wan_iface="$(extractVal_COMMON_RUI "${!OPTIND}")"
+                printf "${debug_prefix} ${GRN_ROLLUP_IT} WAN IFACE: ${wan_iface} ${END_ROLLUP_IT}\n"
 
-              OPTIND=$(($OPTIND + 1))
-              index_i="$(extractVal_COMMON_RUI "${!OPTIND}")"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} Index INPUT: ${index_i} ${END_ROLLUP_IT}\n"
+                OPTIND=$(($OPTIND + 1))
+                index_i="$(extractVal_COMMON_RUI "${!OPTIND}")"
+                printf "${debug_prefix} ${GRN_ROLLUP_IT} Index INPUT: ${index_i} ${END_ROLLUP_IT}\n"
 
-              OPTIND=$(($OPTIND + 1))
-              index_f="$(extractVal_COMMON_RUI "${!OPTIND}")"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} Index FWD: ${index_f} ${END_ROLLUP_IT}\n"
+                OPTIND=$(($OPTIND + 1))
+                index_f="$(extractVal_COMMON_RUI "${!OPTIND}")"
+                printf "${debug_prefix} ${GRN_ROLLUP_IT} Index FWD: ${index_f} ${END_ROLLUP_IT}\n"
 
-              OPTIND=$(($OPTIND + 1))
-              index_o="$(extractVal_COMMON_RUI "${!OPTIND}")"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} Index OUTPUT: ${index_o} ${END_ROLLUP_IT}\n"
+                OPTIND=$(($OPTIND + 1))
+                index_o="$(extractVal_COMMON_RUI "${!OPTIND}")"
+                printf "${debug_prefix} ${GRN_ROLLUP_IT} Index OUTPUT: ${index_o} ${END_ROLLUP_IT}\n"
 
+              else
+                # try to search the last line-number in every filter chains: INPUT, FORWARD, OUTPUT
+                # then we insert LAN rules right before the line
+                index_i = "$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d" " -f)"
+                printf "${debug_prefix} ${GRN_ROLLUP_IT} Found index INPUT: ${index_i} ${END_ROLLUP_IT}\n"
+                index_f = "$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d" " -f)"
+                printf "${debug_prefix} ${GRN_ROLLUP_IT} Found index FWD: ${index_f} ${END_ROLLUP_IT}\n"
+                index_o = "$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d" " -f)"
+                printf "${debug_prefix} ${GRN_ROLLUP_IT} Found index OUTPUT: ${index_o} ${END_ROLLUP_IT}\n"
+              fi
               defineFwConstants_FW_RUI
+            fi
+
+            if [ -n "$(echo $@ | grep -P "^(${LAN_BASE}.*trusted=.*)$")" ]; then
+              OPTIND=$(($OPTIND + 1))
+              trusted_ipset="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Passed trusted ipset: ${trusted_ipset} ${END_ROLLUP_IT}\n"
             fi
 
             if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
@@ -165,7 +185,7 @@ loop_FW_RUI() {
               # arg9 - index_o (OUTPUT -/-)
               # arg10 - trusted ipset
               #
-              insertFwLAN_FW_RUI "${int_name}" "${sn}" "${gw_ip}" "" "" "${wan_iface}" "${index_i}" "${index_f}" "${index_o}" "LAN001_TRUSTED_IPSET"
+              insertFwLAN_FW_RUI "${int_name}" "${sn}" "${gw_ip}" "" "" "${wan_iface}" "${index_i}" "${index_f}" "${index_o}" "${trusted_ipset}"
             fi
 
             if_save_rules="true"

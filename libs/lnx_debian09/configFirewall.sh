@@ -13,7 +13,7 @@ help_FW_RUI() {
   echo "-h - print help" >&2
   echo "--install - install <iptables-persistent> and <ip-set>" >&2
   echo "--wan - WAN (format: --wan int=... sn=... ip=... [in_tcp_pset=... in_udp_pset=...]" >&2
-  echo "--lan - LAN (format: --lan int=... sn=... ip=... [wan_int=... index_i=... index_f=... index_o=...]) - required if we define WAN." >&2
+  echo "--lan - LAN (format: --lan int=... sn=... ip=... [wan_int=... index_i=... index_f=... index_o=... trusted=...]) - required if we define WAN." >&2
   echo "In case when we define WAN, index_{i,f,o} is not requred" >&2
   echo "--link lan001_iface=... lan002_iface=... index_f=..."
   echo "--reset - reset rules" >&2
@@ -385,7 +385,7 @@ saveFwState_FW_RUI() {
 # arg5 - index_i (INPUT start index)
 # arg6 - index_f (FORWARD -/-)
 # arg7 - index_o (OUTPUT -/-)
-# arg8 - trusted ipset for ssh connection
+# arg8 - trusted ipset (List of the LAN hosts we trust)
 #
 insertFwLAN_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
