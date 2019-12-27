@@ -175,21 +175,22 @@ getSudoUser_COMMON_RUI() {
 #:
 runInBackground_COMMON_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   local -r rcmd=$@
 
   # start command
+  printf "${debug_prefix} hostname $(hostname) pwd $(pwd) whoami $(whomai)\n"
   eval "$rcmd" &>"$ROOT_DIR_ROLL_UP_IT/log/${FUNCNAME}_$(date +%H%M_%Y%m%N)_stdout.log" &
   local -r __pid="$!"
   if [[ ${SUPPRESS_PB_COMMON_RUI} == "FALSE" ]]; then
     progressBar "${__pid}" "20" "▇" "100" "Run command: ${rcmd}"
   else
-    printf "\n $debug_prefix ${YEL_ROLLUP_IT} Running the command... : [${rcmd}] ${END_ROLLUP_IT} \n"
+    printf "\n ${debug_prefix} ${YEL_ROLLUP_IT} Running the command... : [${rcmd}] ${END_ROLLUP_IT} \n"
     wait ${__pid}
   fi
 
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
+  printf "\n${debug_prefix} ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
 }
 
 #:
