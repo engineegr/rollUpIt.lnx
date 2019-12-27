@@ -235,7 +235,7 @@ PAD - **PPPoE active discovery**
 3. PADR - request
 4. PADS - session confirmation
 
-24. IP SLA ICMP 
+24. #### IP SLA ICMP 
 
 When IP SLA measure time delay it uses timestamp from source (sender)
 - ICMP Echo 
@@ -275,3 +275,45 @@ Main features:
 
 >[!Links]
 >1. [IPS SLAs Config Guide](https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/ipsla/configuration/15-mt/sla-15-mt-book/sla_udp_jitter.html#task_49723D1D58A249DDAEF50E40059622BE)
+
+
+25. ##### Priority voice traffic (with 802.1p)
+
+There are two types of Tagged Frames
+
+1)Priority Tagged Frames
+
+2)Vlan Tagged Frames
+
+**Priority Tagged** frame is a tagged frame whose tag header contains **VID equal to Null VLAN ID**
+
+Vlan tagged frames is tagged frame whose tag header contains VID set to something other than null VLAN ID. (not our focus at this point)
+
+This NULL VID is a hexadecimal value of 0. It indicates the Tag header only contains the user priority bits (i.e no VLAN identifier is specified).
+
+**So if the PC marks priority bits, it will also set the VID to null VID (i.e value 0) and all traffic on ingress at the switchport (voice and data), will fall into the native vlan. Since the switch is incapable of classifying which is voice (marked by phone )and which is data (marked by PC) because both are sending priority tagged frames with VID set to 0. (Switch is just thinking , hmmm...I guess both are voice)**
+
+However, If the PC was sending untagged traffic, **then only the IP phone is setting priority tagged frames, it becomes easier for the Switch.**
+
+So I'd recommend to always configure
+
+switchport voice vlan xx for IP phones.
+
+Read page 68
+
+Section 9.3.2.3 VID format
+
+http://standards.ieee.org/getieee802/download/802.1Q-1998.pdf
+
+From the above discussion
+
+But my question is what would be there in vlan feild? if you say nothing, does nothing mean zeros?
+
+Yes , the null VID
+
+if nothing mean zeros then how would switch connected to ip phone distinguish between vlan 0(voice vlan) and native vlan as both are identified with zeros in vlan id field in dot1q header.
+
+Remember anything set with null VID will acquire Vlan classification on switchport ingress as per the IEEE paper (NOTE 1). So according to the switch, both voice and vlan (priority tagged) will fall into the same vlan.
+
+>[!Links]
+>1. [switchport voice vlan dot1p command](https://community.cisco.com/t5/switching/switchport-voice-vlan-dot1p-command/td-p/1162570)

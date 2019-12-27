@@ -230,6 +230,12 @@ echo "" > /var/lib/dhcpd/dhcpd.leases
 systemctl start dhcpd
 ```
 
+7. ###### About listening interfaces
+
+The DHCP daemon listens on all network interfaces unless otherwise specified. Use the */etc/sysconfig/dhcpd* file to specify which network interfaces the DHCP daemon listens on. The following */etc/sysconfig/dhcpd* example specifies that the DHCP daemon listens on the eth0 and eth1 interfaces:
+```
+DHCPDARGS="eth0 eth1";
+```
 
 >[!Links]
 >1. [dhcpd.conf man](https://linux.die.net/man/5/dhcpd.conf)

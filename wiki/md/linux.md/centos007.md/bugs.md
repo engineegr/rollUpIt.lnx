@@ -43,3 +43,12 @@ Comment SendEnv LANG LC_\* in */etc/ssh_config* on the host that you connect fro
         Failed to get D-Bus connection: No such file or directory
 
 *To fix:* No fix is available for CentOS7/RHEL
+
+5. ##### kernel: [drm:vmw_host_log [vmwgfx]] *ERROR* Failed to send host log message.
+
+Solution: Change video graphic controller to VBoxVGA
+
+6. ##### systemd-udevd: invalid key/value pair in file /usr/lib/udev/rules.d/59-fc-wwpn-id.rules on line 12, starting at character 25 (';')
+
+Solution: Edit /usr/lib/udev/rules.d/59-fc-wwpn-id.rules - replace *;* with *,*
+[link](https://bugzilla.redhat.com/show_bug.cgi?id=1750417)

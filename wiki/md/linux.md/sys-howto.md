@@ -115,10 +115,34 @@
 
     --delete delete the files in target folder that do not exist in the source
     
+    **OR**
+
+    `rsync -auv --exclude='.git*' /usr/local/src/rollUpIt.lnx /home/ftp_user/ftp/pub/`
+
     Manpage: https://download.samba.org/pub/rsync/rsync.html
+
+
 
     >[!Note]:
     >1. [25 Question on the job review] (https://habr.com/ru/post/280093/)
     >2.[About GPT/MBR](https://www.howtogeek.com/193669/whats-the-difference-between-gpt-and-mbr-when-partitioning-a-drive/)
     >3. [About password encryption](https://thornelabs.net/posts/hash-roots-password-in-rhel-and-centos-kickstart-profiles.html)
 
+2. ##### Bugs
+
+- python virtual environment setup (#CentOS07): 
+Error 001.
+```
+If Python could not import the module virtualenvwrapper.hook_loader,
+ check that virtualenvwrapper has been installed for
+ VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3.4 and that PATH is
+ set properly."
+```
+Solution:
+Export vars in .bashrc
+```
+150 export PATH="/usr/bin:$PATH"
+151 export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3.6
+152 export VIRTUALENVWRAPPER_VIRTUALENV=/usr/bin/virtualenv
+153 . virtualenvwrapper.sh
+```

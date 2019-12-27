@@ -65,10 +65,7 @@ Show status of a network interface
 `nmcli connection show`
 
 Set interface name:
-`sudo nmcli connection modify "Wired connection 1" connection.id eth1`
-
-Set property:
-`sudo nmcli connection modify "eth1"  connection.id eth1 connection.interface-name eth1 ipv4.addresses 172.17.0.143/25 ipv4.gateway 172.17.0.129 ipv4.dns 172.17.0.129`
+`sudo nmcli connection modify "Wired connection 1" connection.id eth1 connection.interface-name eth1 ipv4.addresses 172.17.0.143/25 ipv4.gateway 172.17.0.129 ipv4.dns 172.17.0.129 ipv4.method manual`
 
 IMPORTANT: to change a network device property use `nmcli` utility: https://rivald.blogspot.com/2015/01/rhelcentos-nmcli-tips.html
 https://fedoraproject.org/wiki/Networking/CLI

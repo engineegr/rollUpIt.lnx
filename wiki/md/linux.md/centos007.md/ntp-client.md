@@ -29,3 +29,23 @@ This is an option and by default is disabled in NTP server configuration on Arub
 
 Example
 The following command configures an NTP server using the iburst optional parameter and using a key identifier “123456.”
+
+5. ###### Bugs
+
+5.1.**ntpd_intres[680]: host name not found: 0.ru.pool.ntp.org** [*CentOS 07*]
+
+*Resolution*: to force the ntpd to start after *network.service*
+
+Actions:
+ - edit **ntpd.service**:
+```
+systemctl edit ntpd.service
+```
+
+ - override ntpd.service:
+
+```
+[Unit]
+After=
+After=network.service ...
+```
