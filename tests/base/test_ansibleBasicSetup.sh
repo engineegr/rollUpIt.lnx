@@ -12,6 +12,7 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/install/install.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/sm.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/logging/logging.sh"
 
 if [ $(isDebian_SM_RUI) = "true" ]; then
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"

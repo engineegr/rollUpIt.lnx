@@ -39,7 +39,7 @@ trap "onInterruption_COMMON_RUI $? $LINENO $BASH_COMMAND" ERR EXIT SIGHUP SIGINT
 test_index() {
   local index="${1:-nd}"
 
-  if [[ "$index" != "nd" ]]; then
+  if [ "$index" != 'nd' ]; then
     let ++index
     let ++index
   fi

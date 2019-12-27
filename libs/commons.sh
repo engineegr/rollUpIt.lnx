@@ -536,7 +536,7 @@ getShLogName_COMMON_RUI() {
 # arg1 - expr (format: sn=...)
 #
 extractVal_COMMON_RUI() {
-  echo "$1" | sed -E 's/^([[:alpha:]]+=(.*))$/\2/'
+  echo "$1" | sed -E 's/^([[:alpha:][:digit:]_]+=(.*))$/\2/'
 }
 
 getSysInfo_COMMON_RUI() {

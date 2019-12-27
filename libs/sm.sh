@@ -152,7 +152,7 @@ prepareSudoersd_SM_RUI() {
   fi
 
   local -r sudoers_file="/etc/sudoers"
-  local -r sudoers_addon="/etc/sudoers.d/local_admins"
+  local -r sudoers_addon="/etc/sudoers.d/local_admgr_add"
   local -r sudoers_templ="$(
     cat <<-EOF
 User_Alias	LOCAL_ADM_GROUP = $1
@@ -400,8 +400,15 @@ installPackages_SM_RUI() {
   installDefaults_SM_RUI
 
   doInstallCustoms_SM_RUI
+  preparePythonEnv_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
+}
+
+preparePythonEnv_SM_RUI() {
+  upgradePip3_7_INSTALL_RUI
+  install_virtualenvwrapper_INSTALL_RUI
+  pip3.7 install Pygments
 }
 
 installDefaults_SM_RUI() {
@@ -464,9 +471,7 @@ baseSetup_SM_RUI() {
   setupNtpd_SM_RUI
   setupLogging_SM_RUI
   setupUnattendedUpdates_SM_RUI
-  upgradePip3_7_INSTALL_RUI
-  install_virtualenvwrapper_INSTALL_RUI
-  pip3.7 install Pygments
+  setupPip_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
@@ -560,6 +565,17 @@ setupLogging_SM_RUI() {
 
   setJournaldPersistent_LOGGING_RUI
   deployCfg_LOGGING_RUI
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+setupPip_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  upgradePip3_7_INSTALL_RUI
+  install_virtualenvwrapper_INSTALL_RUI
+  pip3.7 install Pygments
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
