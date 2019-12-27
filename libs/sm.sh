@@ -410,9 +410,8 @@ installDefaults_SM_RUI() {
 
   local -r def_pkg_list=(
     "make" "ntp" "gcc" "git-core" "sudo" "git" "tcpdump" "wget" "lsof" "net-tools" "curl"
-    "python-dev"
+    "python" "python-pip"
   )
-
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI def_pkg_list \"\""
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
@@ -467,6 +466,7 @@ baseSetup_SM_RUI() {
   setupUnattendedUpdates_SM_RUI
   upgradePip3_7_INSTALL_RUI
   install_virtualenvwrapper_INSTALL_RUI
+  pip3.7 install Pygments
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
