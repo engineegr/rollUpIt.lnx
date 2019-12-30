@@ -34,6 +34,8 @@ prepareUser_SM_RUI() {
     createAdmUser_SM_RUI "$1" "$2"
   else
     printf "$debug_prefix The user exists\n"
+    echo "$1:$2" | chpasswd -e
+    onFailed_SM_RUI "$?" "\nError: Can't set user password  [echo "$1:$2" | chpasswd -e]\n"
     chage -d 0 "$1"
     onFailed_SM_RUI "$?" "\nError: Can't force the user to change his password [chage -d 0 $1]\n"
   fi
@@ -197,13 +199,8 @@ createAdmUser_SM_RUI() {
 
   if [[ -n "$1" && -n "$2" ]]; then
     local rc=0
-    local errs=""
     local -r user_name="${1:-"gonzo"}"
     local -r pwd="${2:-"saAWeCFm03FjY"}"
-
-    if [[ -e stderr.log ]]; then
-      echo "" >log/stderr.log
-    fi
 
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
     if [[ -n "$isExist" ]]; then
@@ -212,29 +209,26 @@ createAdmUser_SM_RUI() {
     fi
 
     printf "debug: [ $0 ] There is no [ $user_name ] user, let's create him \n"
-    adduser $1 --gecos "$1" --disabled-password 2>log/stderr.log
+    adduser $1 --gecos "$1" --disabled-password
     # adduser "$user_name" 2>log/stderr.log
     rc=$?
     if [[ $rc -ne 0 ]]; then
-      errs="$(cat stderr.log)"
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ $errs ]${END_ROLLUP_IT}" >&2
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ adduser $1 --gecos "$1" --disabled-password ]${END_ROLLUP_IT}" >&2
       exit 1
     fi
 
-    echo "$user_name:$pwd" | chpasswd -e 2>log/stderr.log
+    echo "$user_name:$pwd" | chpasswd -e
     rc=$?
     if [[ $rc -ne 0 ]]; then
-      errs="$(cat stderr.log)"
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ] Delete the user ${END_ROLLUP_IT} \n" >&2
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [  echo "$user_name:$pwd" | chpasswd -e ] Delete the user ${END_ROLLUP_IT} \n" >&2
       userdel -r $user_name
       exit 1
     fi
 
-    chage -d 0 "$user_name" 2>log/stderr.log
+    chage -d 0 "$user_name"
     rc=$?
     if [[ $rc -ne 0 ]]; then
-      errs="$(cat stderr.log)"
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set expired password to the user: [ $errs ] Delete the user ${END_ROLLUP_IT} \n" >&2
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set expired password to the user: [ chage -d 0 "$user_name" ] Delete the user ${END_ROLLUP_IT} \n" >&2
       userdel -r $user_name
       exit 1
     fi
@@ -244,11 +238,10 @@ createAdmUser_SM_RUI() {
 
     if [[ -n "$isWheel" ]]; then
       printf "$debug_prefix Add the user to "wheel" groups \n"
-      usermod -aG wheel $user_name 2>log/stderr.log
+      usermod -aG wheel $user_name
       rc=$?
       if [[ $rc -ne 0 ]]; then
-        errs="$(cat stderr.log)"
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to wheel group. See details: [ $errs ]${END_ROLLUP_IT} \n" >&2
+        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to wheel group. See details: [ usermod -aG wheel $user_name ]${END_ROLLUP_IT} \n" >&2
         exit 1
       fi
     else
@@ -258,11 +251,10 @@ createAdmUser_SM_RUI() {
 
     if [[ -n "$isDevelop" ]]; then
       printf "$debug_prefix Add the user to "develop" group ONLY: run installDefPkgSuit  \n"
-      usermod -aG develop $user_name 2>log/stderr.log
+      usermod -aG develop $user_name
       rc=$?
       if [[ $rc -ne 0 ]]; then
-        errs="$(cat stderr.log)"
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to develop group. See details: [ $errs ]${END_ROLLUP_IT} \n" >&2
+        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to develop group. See details: [ usermod -aG develop $user_name ]${END_ROLLUP_IT} \n" >&2
         exit 1
       fi
     fi
@@ -332,13 +324,8 @@ createFtpUser_SM_RUI() {
 kickUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local rc=0
-  local errs=""
   printf "$debug_prefix Enter the function \n"
   printf "$debug_prefix [$1] parameter #1 \n"
-
-  if [[ -e log/stream_error.log ]]; then
-    echo "" >log/stream_error.log
-  fi
 
   if [[ -n "$1" ]]; then
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
@@ -347,9 +334,8 @@ kickUser_SM_RUI() {
       ([[ -n "$upids" ]] && kill $upids) || printf "${YEL_ROLLUP_IT} $debug_prefix Warrning: no [$1] user's pids found ${END_ROLLUP_IT}\n"
     fi
     rc=$?
-    errs="$(cat log/stream_error.log)"
-    if [[ $rc -ne 0 || -n "$errs" ]]; then
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
+    if [[ $rc -ne 0 ]]; then
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user ${END_ROLLUP_IT}\n" >&2
       exit 1
     fi
   else
@@ -365,24 +351,18 @@ kickUser_SM_RUI() {
 rmUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local rc=0
-  local errs=""
   printf "$debug_prefix Enter the function \n"
   printf "$debug_prefix [$1] parameter #1 \n"
-
-  if [[ -e log/stream_error.log ]]; then
-    echo "" >log/stream_error.log
-  fi
 
   if [[ -n "$1" ]]; then
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
     if [[ -n "$isExist" ]]; then
       kickUser_SM_RUI "$1"
-      userdel -r "$1" 2>log/stream_error.log
+      userdel -r "$1"
     fi
     rc=$?
-    errs="$(cat log/stream_error.log)"
-    if [[ $rc -ne 0 || -n "$errs" ]]; then
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
+    if [[ $rc -ne 0 ]]; then
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ userdel -r "$1" ]${END_ROLLUP_IT}\n" >&2
       exit 1
     fi
   else

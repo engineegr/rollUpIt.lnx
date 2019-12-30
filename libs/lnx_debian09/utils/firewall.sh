@@ -38,16 +38,22 @@ loop_FW_RUI() {
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   local -r IP_EXP="([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}"
-  local -r WAN_BASE="--wan\sint=.*\ssn=.*\sip=(${IP_EXP}|nd)"
-  local -r WAN_EXP="${WAN_BASE}(\sin_tcp_pset=.*)*(\sin_udp_pset=.*)*"
-  local -r IND_REQ_LAN_EXP="${LAN_BASE}\swan_int=.*\sindex_i=[[:digit:]]+\sindex_f=[[:digit:]]+\sindex_o=[[:digit:]]+(trusted=.*)*"
+  local -r SUBNET_EXP="${IP_EXP}\/([0]|[1-2][0-9]|[3][0-2])"
+  local -r NAME_EXP="[A-Za-z][-_a-zA-Z0-9]{0,30}"
 
-  local -r LAN_EXP="${LAN_BASE}(\sindex_i=[[:digit:]]+\sindex_f=[[:digit:]]+\sindex_o=[[:digit:]]+)*(trusted=.*)*"
-  local -r LAN_BASE="--lan\sint=.*\ssn=.*\sip=${IP_EXP}"
-  local -r LINK_EXP="--link\slan001_iface=.*\slan002_iface=.*\sindex_f=[[:digit:]]+"
-  local -r RST_EXP="--reset"
-  local -r INSTALL_EXP="--install"
-  if [ -z "$(echo $@ | grep -P "^((${WAN_EXP}(\s${LAN_EXP}))|(${IND_REQ_LAN_EXP})|(${LINK_EXP})|(${RST_EXP})|(${INSTALL_EXP})|(--lf)|(--ln)|(-h))$")" ]; then
+  local -r LAN_BASE="--lan\sint=${NAME_EXP}\ssn=${SUBNET_EXP}\sip=${IP_EXP}(\sout_tcp_fwr_ports=${NAME_EXP}){0,1}(\sout_udp_fwr_ports=${NAME_EXP}){0,1}"
+  local -r LAN_INFW_EXP="trusted=${NAME_EXP}\s((in_tcp_fw_ports=${NAME_EXP})|(in_udp_fw_ports=${NAME_EXP}))"
+  local -r INDEX_EXP="index_i=[[:digit:]]+\sindex_f=[[:digit:]]+\sindex_o=[[:digit:]]+"
+  local -r LAN_EXP="${LAN_BASE}(\s${INDEX_EXP}){0,1}(\s${LAN_INFW_EXP}){0,1}"
+
+  local -r WAN_BASE="--wan\sint=${NAME_EXP}\ssn=${SUBNET_EXP}\sip=(${IP_EXP}|nd)"
+  local -r WAN_EXP="${WAN_BASE}(\strusted=${NAME_EXP}\s((wan_in_tcp_ports=${NAME_EXP})|(wan_in_udp_ports=${NAME_EXP}))){0,1}"
+  local -r IND_REQ_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s${INDEX_EXP}(${LAN_INFW_EXP}){0,1}"
+  local -r INS_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s(${INDEX_EXP}){0,1}(${LAN_INFW_EXP}){0,1}"
+
+  local -r LINK_EXP="--link\slan001_iface=${NAME_EXP}\slan002_iface=${NAME_EXP}\sindex_f=[[:digit:]]+"
+
+  if [ -z "$(echo $@ | grep -P "^((${WAN_EXP}(\s${LAN_EXP}).*)|(${INS_LAN_EXP}.*)|(${LINK_EXP}.*)|(--reset)|(--install)|(--lm)|(--lf)|(--ln)|(-h))$")" ]; then
     printf "${debug_prefix} ${RED_ROLLUP_IT} ERROR: Invalid arguments ${END_ROLLUP_IT}\n"
     help_FW_RUI
     exit 1
@@ -56,12 +62,10 @@ loop_FW_RUI() {
   local __opts=""
   local if_save_rules="false"
   local if_begin="false"
-  local -r IF_DEBUG_FW_RUI="false"
+  local -r IF_DEBUG_FW_RUI="true"
 
-  if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
-    loadFwModules_FW_RUI
-  fi
   while getopts ":h-:" opt; do
+    echo "debug opt: $opt"
     case $opt in
       -)
         case "${OPTARG}" in
@@ -69,6 +73,12 @@ loop_FW_RUI() {
             printf "${debug_prefix} ${GRN_ROLLUP_IT} Install fw ${#OPTARG} ${OPTIND} ${END_ROLLUP_IT} \n"
             if [ "${IF_DEBUG_FW_RUI}"="false" ]; then
               installFw_FW_RUI
+            fi
+            ;;
+          lm)
+            printf "${debug_prefix} ${GRN_ROLLUP_IT} Load necessary modules (via depmod) ${#OPTARG} ${OPTIND} ${END_ROLLUP_IT} \n"
+            if [ "${IF_DEBUG_FW_RUI}"="false" ]; then
+              loadFwModules_FW_RUI
             fi
             ;;
           wan)
@@ -84,33 +94,32 @@ loop_FW_RUI() {
             local gw_ip="$(extractVal_COMMON_RUI "${!OPTIND}")"
             printf "${debug_prefix} ${GRN_ROLLUP_IT} WAN GW ip: '--${OPTARG}' param: '${gw_ip}' ${END_ROLLUP_IT} \n"
 
-            local in_tcp_port_set="nd"
-            local in_udp_port_set="nd"
-            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}\sin_tcp_pset=.*\s)$")" ]; then
-              OPTIND=$(($OPTIND + 1))
-              local in_tcp_port_set="$(extractVal_COMMON_RUI "${!OPTIND}")"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input TCP Port set: '--${OPTARG}' param: '${in_tcp_port_set}' ${END_ROLLUP_IT} \n"
+            local trusted_ipset="nd"
+            local wan_in_tcp_ports="nd"
+            local wan_in_udp_ports="nd"
 
-            elif [ -n "$(echo $@ | grep -P "^(${WAN_BASE}\sin_udp_pset=.*\s)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*trusted=.*${LAN_EXP}.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
-              local in_udp_port_set="$(extractVal_COMMON_RUI "${!OPTIND}")"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input UDP Port set: '--${OPTARG}' param: '${in_udp_port_set}' ${END_ROLLUP_IT} \n"
+              trusted_ipset="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input trusted hosts (dest): '--${OPTARG}' param: '${trusted_ipset}' ${END_ROLLUP_IT} \n"
+            fi
 
-            elif [ -n "$(echo $@ | grep -P "^(${WAN_BASE}\sin_tcp_pset=.*\sin_udp_pset=.*)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_in_tcp_ports=.*${LAN_EXP}.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
-              local in_tcp_port_set="$(extractVal_COMMON_RUI "${!OPTIND}")"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input TCP Port set: '--${OPTARG}' param: '${in_tcp_port_set}' ${END_ROLLUP_IT} \n"
+              wan_in_tcp_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input TCP Port set: '--${OPTARG}' param: '${wan_in_tcp_ports}' ${END_ROLLUP_IT} \n"
+            fi
+
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_in_udp_ports=.*${LAN_EXP}.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
-              local in_udp_port_set="$(extractVal_COMMON_RUI "${!OPTIND}")"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input UDP Port set: '--${OPTARG}' param: '${in_udp_port_set}' ${END_ROLLUP_IT} \n"
-            else
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} No INPUT TCP/UDP Ports set defined ${END_ROLLUP_IT} \n"
+              wan_in_udp_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input UDP Port set: '--${OPTARG}' param: '${wan_in_udp_ports}' ${END_ROLLUP_IT} \n"
             fi
 
             if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
-              clearFwState_FW_RUI
+              # clearFwState_FW_RUI
               defineFwConstants_FW_RUI
-              beginFwRules_FW_RUI "${int_name}" "${sn}" "${gw_ip}" "${in_tcp_port_set}" "${in_udp_port_set}"
+              beginFwRules_FW_RUI "${int_name}" "${sn}" "${gw_ip}" "${trusted_ipset}" "${wan_in_tcp_ports}" "${wan_in_udp_ports}"
             fi
             if_save_rules="true"
             if_begin="true"
@@ -128,18 +137,36 @@ loop_FW_RUI() {
             gw_ip="$(extractVal_COMMON_RUI "${!OPTIND}")"
             printf "${debug_prefix} ${GRN_ROLLUP_IT} LAN GW ip: '--${OPTARG}' param: '${gw_ip}' ${END_ROLLUP_IT} \n"
 
+            local out_tcp_fwr_ports="nd"
+            local out_udp_fwr_ports="nd"
+            local prefix_exp="$([ "${if_begin}" = true ] && echo "${WAN_EXP}\s" || echo "")"
+
+            if [ -n "$(echo $@ | grep -P "^(${prefix_exp}${LAN_BASE}.*out_tcp_fwr_ports=.*)$")" ]; then
+              OPTIND=$(($OPTIND + 1))
+              out_tcp_fwr_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Passed OUT FWR TCP port set (for the LAN): ${out_tcp_fwr_ports} ${END_ROLLUP_IT}\n"
+            fi
+
+            if [ -n "$(echo $@ | grep -P "^(${prefix_exp}${LAN_BASE}.*out_udp_fwr_ports=.*)$")" ]; then
+              OPTIND=$(($OPTIND + 1))
+              out_udp_fwr_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Passed OUT FWR UDP port set (for the LAN): ${out_udp_fwr_ports} ${END_ROLLUP_IT}\n"
+            fi
+
             local wan_iface=""
             local index_i="nd"
             local index_f="nd"
             local index_o="nd"
             local trusted_ipset="LAN001_TRUSTED_IPSET"
+            local in_tcp_fw_ports="nd"
+            local in_udp_fw_ports="nd"
+
             if [ "${if_begin}" = false ]; then
+              OPTIND=$(($OPTIND + 1))
+              wan_iface="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} WAN IFACE: ${wan_iface} ${END_ROLLUP_IT}\n"
+
               if [ -n "$(echo $@ | grep -P "^(${IND_REQ_LAN_EXP})$")" ]; then
-
-                OPTIND=$(($OPTIND + 1))
-                wan_iface="$(extractVal_COMMON_RUI "${!OPTIND}")"
-                printf "${debug_prefix} ${GRN_ROLLUP_IT} WAN IFACE: ${wan_iface} ${END_ROLLUP_IT}\n"
-
                 OPTIND=$(($OPTIND + 1))
                 index_i="$(extractVal_COMMON_RUI "${!OPTIND}")"
                 printf "${debug_prefix} ${GRN_ROLLUP_IT} Index INPUT: ${index_i} ${END_ROLLUP_IT}\n"
@@ -152,7 +179,7 @@ loop_FW_RUI() {
                 index_o="$(extractVal_COMMON_RUI "${!OPTIND}")"
                 printf "${debug_prefix} ${GRN_ROLLUP_IT} Index OUTPUT: ${index_o} ${END_ROLLUP_IT}\n"
 
-              else
+              elif [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
                 # try to search the last line-number in every filter chains: INPUT, FORWARD, OUTPUT
                 # then we insert LAN rules right before the line
                 index_i = "$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d" " -f)"
@@ -162,30 +189,51 @@ loop_FW_RUI() {
                 index_o = "$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d" " -f)"
                 printf "${debug_prefix} ${GRN_ROLLUP_IT} Found index OUTPUT: ${index_o} ${END_ROLLUP_IT}\n"
               fi
-              defineFwConstants_FW_RUI
+
+              if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
+                defineFwConstants_FW_RUI
+              fi
             fi
 
-            if [ -n "$(echo $@ | grep -P "^(${LAN_BASE}.*trusted=.*)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${prefix_exp}${LAN_BASE}.*trusted=.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
               trusted_ipset="$(extractVal_COMMON_RUI "${!OPTIND}")"
               printf "${debug_prefix} ${GRN_ROLLUP_IT} Passed trusted ipset: ${trusted_ipset} ${END_ROLLUP_IT}\n"
             fi
 
+            if [ -n "$(echo $@ | grep -P "^(${prefix_exp}${LAN_BASE}.*in_tcp_fw_ports=.*)$")" ]; then
+              OPTIND=$(($OPTIND + 1))
+              in_tcp_fw_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Passed INPUT firewall TCP port set (for LAN trusted ipset): ${in_tcp_fw_ports} ${END_ROLLUP_IT}\n"
+            fi
+
+            if [ -n "$(echo $@ | grep -P "^(${prefix_exp}${LAN_BASE}.*in_udp_fw_ports=.*)$")" ]; then
+              OPTIND=$(($OPTIND + 1))
+              in_udp_fw_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Passed INPUT firewall UDP port set (for LAN trusted ipset): ${in_udp_fw_ports} ${END_ROLLUP_IT}\n"
+            fi
+
             if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
               create_lan001_trusted_ipset
+
               #
-              # arg1 - vlan nic
-              # arg2 - vlan ip
-              # arg3 - vlan gw
+              # arg1 - lan iface
+              # arg2 - lan subnet-id
+              # arg3 - lan gw ip address
               # arg4 - tcp ipset out forward ports
               # arg5 - udp ipset out forward ports
-              # arg6 - WAN IFACE
+              # arg6 - wan iface (not required)
               # arg7 - index_i (INPUT start index)
               # arg8 - index_f (FORWARD -/-)
               # arg9 - index_o (OUTPUT -/-)
-              # arg10 - trusted ipset
+              # arg10 - trusted ipset (List of the LAN hosts we trust to connect to the firewall)
+              # arg11 - tcp input port set (from the LAN to the firewall lan iface - INPUT chain)
+              # arg12 - udp input port set (-/-)
               #
-              insertFwLAN_FW_RUI "${int_name}" "${sn}" "${gw_ip}" "" "" "${wan_iface}" "${index_i}" "${index_f}" "${index_o}" "${trusted_ipset}"
+              insertFwLAN_FW_RUI "${int_name}" \
+                "${sn}" "${gw_ip}" "${out_tcp_fwr_ports}" "${out_udp_fwr_ports}" \
+                "${wan_iface}" "${index_i}" "${index_f}" "${index_o}" \
+                "${trusted_ipset}" "${in_tcp_fw_ports}" "${in_udp_fw_ports}"
             fi
 
             if_save_rules="true"

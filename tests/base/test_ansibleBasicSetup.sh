@@ -11,8 +11,8 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/install/install.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/commons.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/sm.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/logging/logging.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/sm.sh"
 
 if [ $(isDebian_SM_RUI) = "true" ]; then
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
@@ -43,13 +43,14 @@ main() {
 
   local user_name="gonzo"
   local -r pwd='saAWeCFm03FjY'
-  local -r home_dir="/home/${user_name}"
+  local home_dir="nd"
 
   if [[ -n $1 ]]; then
     user_name="$1"
   else
     printf "${debug_prefix} ${GRN_ROLLUP_IT} No username passed. Let's use a default value (gonzo) ${END_ROLLUP_IT}"
   fi
+  [[ "${user_name}" == "root" ]] && home_dir="/root" || home_dir="/home/$username"
 
   installPackages_SM_RUI
   baseSetup_SM_RUI
@@ -66,7 +67,6 @@ if [ -f "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh" ]; then
   "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh"
 fi
 EOF
-  chown -Rf "${user_name}":"${user_name}" "${home_dir}"
   prepareUser_SM_RUI "$user_name" "$pwd"
 
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
