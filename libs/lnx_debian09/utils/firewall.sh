@@ -16,23 +16,6 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/configFirewall.sh"
 
-create_lan001_trusted_ipset() {
-  local -r VBOX_LAN_IP="172.17.0.130"
-  local -r FTP_LAN_IP="172.17.0.132"
-  local -r ANSIBLE_LAN_IP="172.17.0.133"
-  local -r LAN001_TRUSTED_IPSET="LAN001_TRUSTED_IPSET"
-  if [ -z "$(ipset list -n | grep "LAN001_TRUSTED_IPSET")" ]; then
-    ipset -N "${LAN001_TRUSTED_IPSET}" iphash
-    ipset -A "${LAN001_TRUSTED_IPSET}" "${VBOX_LAN_IP}"
-    ipset -A "${LAN001_TRUSTED_IPSET}" "${FTP_LAN_IP}"
-    ipset -A "${LAN001_TRUSTED_IPSET}" "${ANSIBLE_LAN_IP}"
-  else
-    printf "${debug_prefix} ${GRN_ROLLUP_IT} ipset [${LAN001_TRUSTED_IPSET}] has already been defined. Please, check [ ipset list -n ] ${END_ROLLUP_IT} \n"
-  fi
-
-  echo -n "${LAN001_TRUSTED_IPSET}"
-}
-
 loop_FW_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
@@ -42,18 +25,18 @@ loop_FW_RUI() {
   local -r NAME_EXP="[A-Za-z][-_a-zA-Z0-9]{0,30}"
 
   local -r LAN_BASE="--lan\sint=${NAME_EXP}\ssn=${SUBNET_EXP}\sip=${IP_EXP}(\sout_tcp_fwr_ports=${NAME_EXP}){0,1}(\sout_udp_fwr_ports=${NAME_EXP}){0,1}"
-  local -r LAN_INFW_EXP="trusted=${NAME_EXP}\s((in_tcp_fw_ports=${NAME_EXP})|(in_udp_fw_ports=${NAME_EXP}))"
+  local -r LAN_INFW_EXP="trusted=${NAME_EXP}\s((in_tcp_fw_ports=${NAME_EXP}(\sin_udp_fw_ports=${NAME_EXP})?)|(in_udp_fw_ports=${NAME_EXP}(\sin_tcp_fw_ports=${NAME_EXP})?))"
   local -r INDEX_EXP="index_i=[[:digit:]]+\sindex_f=[[:digit:]]+\sindex_o=[[:digit:]]+"
-  local -r LAN_EXP="${LAN_BASE}(\s${INDEX_EXP}){0,1}(\s${LAN_INFW_EXP}){0,1}"
+  local -r LAN_EXP="${LAN_BASE}(\s${INDEX_EXP}){0,1}(\s${LAN_INFW_EXP})?"
 
   local -r WAN_BASE="--wan\sint=${NAME_EXP}\ssn=${SUBNET_EXP}\sip=(${IP_EXP}|nd)"
-  local -r WAN_EXP="${WAN_BASE}(\strusted=${NAME_EXP}\s((wan_in_tcp_ports=${NAME_EXP})|(wan_in_udp_ports=${NAME_EXP}))){0,1}"
-  local -r IND_REQ_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s${INDEX_EXP}(${LAN_INFW_EXP}){0,1}"
+  local -r WAN_EXP="${WAN_BASE}(\strusted=${NAME_EXP}\s((wan_in_tcp_ports=${NAME_EXP}(\swan_in_udp_ports=${NAME_EXP})?)|(wan_in_udp_ports=${NAME_EXP}(\swan_in_tcp_ports=${NAME_EXP})?)))?"
+  local -r IND_REQ_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s${INDEX_EXP}(\s${LAN_INFW_EXP})?"
   local -r INS_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s(${INDEX_EXP}){0,1}(${LAN_INFW_EXP}){0,1}"
 
   local -r LINK_EXP="--link\slan001_iface=${NAME_EXP}\slan002_iface=${NAME_EXP}\sindex_f=[[:digit:]]+"
 
-  if [ -z "$(echo $@ | grep -P "^((${WAN_EXP}(\s${LAN_EXP}).*)|(${INS_LAN_EXP}.*)|(${LINK_EXP}.*)|(--reset)|(--install)|(--lm)|(--lf)|(--ln)|(-h))$")" ]; then
+  if [ -z "$(echo $@ | grep -P "((${WAN_EXP}(\s${LAN_EXP}))|(${INS_LAN_EXP})|(${LINK_EXP})|(--reset)|(--install)|(--lm)|(--lf)|(--ln)|(-h))")" ]; then
     printf "${debug_prefix} ${RED_ROLLUP_IT} ERROR: Invalid arguments ${END_ROLLUP_IT}\n"
     help_FW_RUI
     exit 1
@@ -62,7 +45,7 @@ loop_FW_RUI() {
   local __opts=""
   local if_save_rules="false"
   local if_begin="false"
-  local -r IF_DEBUG_FW_RUI="true"
+  local -r IF_DEBUG_FW_RUI="false"
 
   while getopts ":h-:" opt; do
     echo "debug opt: $opt"
@@ -157,7 +140,7 @@ loop_FW_RUI() {
             local index_i="nd"
             local index_f="nd"
             local index_o="nd"
-            local trusted_ipset="LAN001_TRUSTED_IPSET"
+            local trusted_ipset="nd"
             local in_tcp_fw_ports="nd"
             local in_udp_fw_ports="nd"
 
@@ -182,11 +165,11 @@ loop_FW_RUI() {
               elif [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
                 # try to search the last line-number in every filter chains: INPUT, FORWARD, OUTPUT
                 # then we insert LAN rules right before the line
-                index_i = "$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d" " -f)"
+                index_i="$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d' ' -f1)"
                 printf "${debug_prefix} ${GRN_ROLLUP_IT} Found index INPUT: ${index_i} ${END_ROLLUP_IT}\n"
-                index_f = "$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d" " -f)"
+                index_f="$(iptables -L FORWARD -v -n --line-number | tail -n 1 | cut -d' ' -f1)"
                 printf "${debug_prefix} ${GRN_ROLLUP_IT} Found index FWD: ${index_f} ${END_ROLLUP_IT}\n"
-                index_o = "$(iptables -L INPUT -v -n --line-number | tail -n 1 | cut -d" " -f)"
+                index_o="$(iptables -L OUTPUT -v -n --line-number | tail -n 1 | cut -d' ' -f1)"
                 printf "${debug_prefix} ${GRN_ROLLUP_IT} Found index OUTPUT: ${index_o} ${END_ROLLUP_IT}\n"
               fi
 
@@ -214,8 +197,6 @@ loop_FW_RUI() {
             fi
 
             if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
-              create_lan001_trusted_ipset
-
               #
               # arg1 - lan iface
               # arg2 - lan subnet-id
