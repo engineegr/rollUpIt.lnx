@@ -12,7 +12,7 @@ help_FW_RUI() {
   echo "Usage:" >&2
   echo "-h - print help" >&2
   echo "--install - install <iptables-persistent> and <ip-set>" >&2
-  echo "--wan - WAN (format: --wan int=... sn=... ip=... [trusted=... wan_in_tcp_ports=... wan_in_udp_ports=...]" >&2
+  echo "--wan - WAN (format: --wan int=... sn=... ip=... [out_tcp_fwr_ports=... out_udp_fwr_ports=...] [trusted=... wan_in_tcp_ports=... wan_in_udp_ports=...]" >&2
   echo "--lan - LAN (format: --lan int=... sn=... ip=... [out_tcp_fwr_ports=... out_udp_fwr_ports=...] [wan_int=... index_i=... index_f=... index_o=... trusted=... in_tcp_fw_ports=... in_udp_fw_ports=...]) - required if we define WAN." >&2
   echo "In case when we define WAN, index_{i,f,o} is not requred" >&2
   echo "--link lan001_iface=... lan002_iface=... index_f=..."
@@ -128,21 +128,23 @@ defineFwConstants_FW_RUI() {
 
     ipset create IN_UDP_FW_PORTS bitmap:port range 1-4000
     ipset create IN_TCP_FW_PORTS bitmap:port range 1-4000
+    ipset create OUT_TCP_FW_PORTS bitmap:port range 1-4000
+    ipset create OUT_UDP_FW_PORTS bitmap:port range 1-4000
     ipset create OUT_TCP_FWR_PORTS bitmap:port range 1-4000
     ipset create OUT_UDP_FWR_PORTS bitmap:port range 1-4000
     ipset create IN_TCP_FWR_PORTS bitmap:port range 1-4000
     ipset create IN_UDP_FWR_PORTS bitmap:port range 1-4000
 
     #--- Add ports --------------------------------------#
-    # ipset add OUT_TCP_FW_PORTS "${FTP_DATA_PORT_FW_RUI}"
+    ipset add OUT_TCP_FW_PORTS "${FTP_DATA_PORT_FW_RUI}"
     ipset add OUT_TCP_FWR_PORTS "$FTP_DATA_PORT_FW_RUI"
-    # ipset add OUT_TCP_FW_PORTS "${FTP_CMD_PORT_FW_RUI}"
+    ipset add OUT_TCP_FW_PORTS "${FTP_CMD_PORT_FW_RUI}"
     ipset add OUT_TCP_FWR_PORTS "$FTP_CMD_PORT_FW_RUI"
-    # ipset add OUT_TCP_FW_PORTS "${HTTP_PORT_FW_RUI}"
+    ipset add OUT_TCP_FW_PORTS "${HTTP_PORT_FW_RUI}"
     ipset add OUT_TCP_FWR_PORTS "${HTTP_PORT_FW_RUI}"
 
     ipset add IN_TCP_FW_PORTS "${SSH_PORT_FW_RUI}"
-    # ipset add OUT_TCP_FW_PORTS "${HTTPS_PORT_FW_RUI}"
+    ipset add OUT_TCP_FW_PORTS "${HTTPS_PORT_FW_RUI}"
     ipset add OUT_TCP_FWR_PORTS "${HTTPS_PORT_FW_RUI}"
     ipset add OUT_UDP_FWR_PORTS "${DNS_PORT_FW_RUI}"
   else
@@ -181,9 +183,11 @@ clearFwState_FW_RUI() {
 # arg1 - wan NIC
 # arg2 - wan subnet
 # arg3 - wan ip
-# arg4 - trusted ip set
-# arg5 - input tcp WAN port set
-# arg6 - input udp WAN port set
+# arg4 - tcp ipset out forward ports
+# arg5 - udp ipset out forward ports
+# arg5 - trusted ip set
+# arg6 - input tcp WAN port set
+# arg7 - input udp WAN port set
 #
 beginFwRules_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
@@ -198,9 +202,11 @@ beginFwRules_FW_RUI() {
   local -r WAN_SN_FW_RUI="$2"
   local -r WAN_IP_FW_RUI="${3:-'nd'}"
   local -r LOCAL_FTP_FW_RUI="172.17.0.132"
-  local -r trusted_ipset="${4:-'nd'}"
-  local -r in_tcp_wan_port_set="${5:-'nd'}"
-  local -r in_udp_wan_port_set="${6:-'nd'}"
+  local -r out_tcp_fw_port_set=$([[ -z "$4" || "$4" == "nd" ]] && echo "OUT_TCP_FW_PORTS" || echo "$4")
+  local -r out_udp_fw_port_set=$([[ -z "$5" || "$5" == "nd" ]] && echo "OUT_UDP_FW_PORTS" || echo "$5")
+  local -r trusted_ipset="${6:-'nd'}"
+  local -r in_tcp_wan_port_set="${7:-'nd'}"
+  local -r in_udp_wan_port_set="${8:-'nd'}"
 
   # Always accept loopback traffic
   iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -j ACCEPT
@@ -238,6 +244,36 @@ beginFwRules_FW_RUI() {
   iptables -v -A INPUT -p ALL -j allowed_packets
   iptables -v -A FORWARD -p ALL -j allowed_packets
   iptables -v -A OUTPUT -p ALL -j allowed_packets
+
+  if [ "${out_tcp_fw_port_set}" != 'nd' ]; then
+    if [ -n "$(ipset list -n | grep "${out_tcp_fw_port_set}")" ]; then
+      iptables -v -A OUTPUT -p tcp --syn -o "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+        -m set --match-set "${out_tcp_fw_port_set}" dst \
+        -j LOG --log-prefix "iptables [WAN{new,TCP}->OUTPUT]"
+
+      iptables -v -A OUTPUT -p tcp --syn -o "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+        -m set --match-set "${out_tcp_fw_port_set}" dst \
+        -j ACCEPT
+    else
+      printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find OUTPUT TCP WAN port set ${END_ROLLUP_IT}\n"
+      exit 1
+    fi
+  fi
+
+  if [ "${out_udp_fw_port_set}" != 'nd' ]; then
+    if [ -n "$(ipset list -n | grep "${out_udp_fw_port_set}")" ]; then
+      iptables -v -A OUTPUT -p udp -o "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+        -m set --match-set "${out_udp_fw_port_set}" dst \
+        -j LOG --log-prefix "iptables [WAN{new,UDP}->OUTPUT]"
+
+      iptables -v -A OUTPUT -p udp -o "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+        -m set --match-set "${out_udp_fw_port_set}" dst \
+        -j ACCEPT
+    else
+      printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find OUTPUT UDP WAN port set ${END_ROLLUP_IT}\n"
+      exit 1
+    fi
+  fi
 
   if [ "${trusted_ipset}" != 'nd' ]; then
     if [ -n "$(ipset list -n | grep "${trusted_ipset}")" ]; then

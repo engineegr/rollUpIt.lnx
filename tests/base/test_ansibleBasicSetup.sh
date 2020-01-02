@@ -50,7 +50,7 @@ main() {
   else
     printf "${debug_prefix} ${GRN_ROLLUP_IT} No username passed. Let's use a default value (gonzo) ${END_ROLLUP_IT}"
   fi
-  [[ "${user_name}" == "root" ]] && home_dir="/root" || home_dir="/home/$username"
+  [[ "${user_name}" == "root" ]] && home_dir="/root" || home_dir="/home/${user_name}"
 
   installPackages_SM_RUI
   baseSetup_SM_RUI
