@@ -12,13 +12,13 @@ help_FW_RUI() {
   echo "Usage:" >&2
   echo "-h - print help" >&2
   echo "--install - install <iptables-persistent> and <ip-set>" >&2
-  echo "--wan - WAN (format: --wan int=... sn=... ip=... [out_tcp_fwr_ports=... out_udp_fwr_ports=...] [trusted=... wan_in_tcp_ports=... wan_in_udp_ports=...]" >&2
-  echo "--lan - LAN (format: --lan int=... sn=... ip=... [out_tcp_fwr_ports=... out_udp_fwr_ports=...] [wan_int=... index_i=... index_f=... index_o=... trusted=... in_tcp_fw_ports=... in_udp_fw_ports=...]) - required if we define WAN." >&2
-  echo "In case when we define WAN, index_{i,f,o} is not requred" >&2
+  echo "--wan - WAN (format: --wan int=... sn=... ip=... [out_tcp_fw_ports=... out_udp_fw_ports=...] [trusted=... wan_in_tcp_ports=... wan_in_udp_ports=...]" >&2
+  echo "--lan - LAN (format: --lan int=... sn=... ip=... [out_tcp_fwr_ports=... out_udp_fwr_ports=...] [wan_int=... index_i=... index_f=... index_o=... ] [trusted=... in_tcp_fw_ports=... in_udp_fw_ports=...]" >&2
   echo "--link lan001_iface=... lan002_iface=... index_f=..."
   echo "--reset - reset rules" >&2
   echo "--lf - list filter rules" >&2
   echo "--ln - list nat rules" >&2
+  echo "--lm - load modules" >&2
 }
 
 installFw_FW_RUI() {
