@@ -4,7 +4,7 @@
  
  load_rules()
  {
-+  local -r root_dir_roll_up_it="/usr/local/src/post-scripts/rollUpIt.lnx"
++  local root_dir_roll_up_it="/usr/local/src/post-scripts"
 +  # load modules
 +  ${root_dir_roll_up_it}/rollUpIt.lnx/libs/lnx_debian09/utils/firewall.sh --lm;
 +  local ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
