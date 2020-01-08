@@ -211,10 +211,19 @@ beginFwRules_FW_RUI() {
   # Always accept loopback traffic
   iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -j ACCEPT
 
-  # Filter income bad guys
+  # Declare user chains
   iptables -v -N bad_tcp_packets
+  iptables -v -N invalid_packets
+  iptables -v -N private_net_packets
+
   iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
   iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
+  iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -j invalid_packets
+  iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -j invalid_packets
+  iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -j private_net_packets
+  iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -j private_net_packets
+
+  iptables -v -A invalid_packets -m conntrack --ctstate INVALID -j DROP
 
   #------ Port scan rules - DROP -----------------------------------------#
   iptables -v -N PORTSCAN
@@ -230,11 +239,38 @@ beginFwRules_FW_RUI() {
   iptables -v -A PORTSCAN -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j DROP
   iptables -v -A PORTSCAN -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP
 
+  #------- Bad SYN flags set -------------------------------------------------#
   iptables -v -A bad_tcp_packets -p tcp --tcp-flags SYN,ACK ACK,SYN -m state --state NEW -j LOG --log-prefix "iptables [bad_tcp_packets, new SYN/ACK]"
   iptables -v -A bad_tcp_packets -p tcp --tcp-flags SYN,ACK ACK,SYN -m state --state NEW -j REJECT --reject-with tcp-reset
 
   iptables -v -A bad_tcp_packets -p tcp ! --syn -m state --state NEW -j LOG --log-prefix "iptables [bad_tcp_packets, not SYN new]"
   iptables -v -A bad_tcp_packets -p tcp ! --syn -m state --state NEW -j DROP
+
+  #------- Uncommon MSS size -------------------------------------------------------------------------#
+  iptables -v -A bad_tcp_packets -p tcp -m conntrack --ctstate NEW -m tcpmss ! --mss 536:65535 \
+    -j LOG --log-prefix "iptables [bad_tcp_packets, 536<MSS<65535]"
+  iptables -v -A bad_tcp_packets -p tcp -m conntrack --ctstate NEW -m tcpmss ! --mss 536:65535 -j DROP
+
+  #------- Block private (RFC 1918) network packets --------------------------------------------------#
+  iptables -v -A private_net_packets -s 224.0.0.0/3 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 224.0.0.0/3 -j DROP
+  iptables -v -A private_net_packets -s 169.254.0.0/16 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 169.254.0.0/16 -j DROP
+  iptables -v -A private_net_packets -s 172.16.0.0/12 -j LOG --log-prefix "iptables [private_net_packets, ->WAN-iface]"
+  iptables -v -A private_net_packets -s 172.16.0.0/12 -j DROP
+  iptables -v -A private_net_packets -s 192.0.2.0/24 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 192.0.2.0/24 -j DROP
+  iptables -v -A private_net_packets -s 192.168.0.0/16 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 192.168.0.0/16 -j DROP
+  iptables -v -A private_net_packets -s 10.0.0.0/8 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 10.0.0.0/8 -j DROP
+  iptables -v -A private_net_packets -s 0.0.0.0/8 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 0.0.0.0/8 -j DROP
+  iptables -v -A private_net_packets -s 240.0.0.0/5 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 240.0.0.0/5 -j DROP
+  iptables -v -A private_net_packets -s 127.0.0.0/8 ! -i lo -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 127.0.0.0/8 ! -i lo -j DROP
+
   iptables -v -A bad_tcp_packets -j PORTSCAN
 
   # All established/related connections are permitted
@@ -283,7 +319,8 @@ beginFwRules_FW_RUI() {
             -m set --match-set "${in_tcp_wan_port_set}" dst \
             -j LOG --log-prefix "iptables [WAN{new,TCP}->INPUT]"
 
-          iptables -v -A INPUT -p tcp --syn -i "${WAN_IFACE_FW_RUI}" -m state --state NEW -m set --match-set "${in_tcp_wan_port_set}" dst \
+          iptables -v -A INPUT -p tcp --syn -i "${WAN_IFACE_FW_RUI}" -m state --state NEW -m set --match-set "${trusted_ipset}" src \
+            -m set --match-set "${in_tcp_wan_port_set}" dst \
             -j ACCEPT
         else
           printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find INPUT TCP WAN port set ${END_ROLLUP_IT}\n"
@@ -297,7 +334,8 @@ beginFwRules_FW_RUI() {
             -m set --match-set "${in_udp_wan_port_set}" dst \
             -j LOG --log-prefix "iptables [WAN{new,UDP}->INPUT]"
 
-          iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW -m set --match-set "${in_udp_wan_port_set}" dst \
+          iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW -m set --match-set "${trusted_ipset}" src \
+            -m set --match-set "${in_udp_wan_port_set}" dst \
             -j ACCEPT
         else
           printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find INPUT UDP WAN port set ${END_ROLLUP_IT}\n"
@@ -308,6 +346,32 @@ beginFwRules_FW_RUI() {
       printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find WAN trusted hosts ${END_ROLLUP_IT}\n"
       exit 1
     fi
+  else
+    if [ "${in_tcp_wan_port_set}" != 'nd' ]; then
+      if [ -n "$(ipset list -n | grep "${in_tcp_wan_port_set}")" ]; then
+        prepareSYNPROXY_FW_RUI
+        ruleSYNPROXY_FW_RUI "${WAN_IFACE_FW_RUI}" "${in_tcp_wan_port_set}"
+      else
+        printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find INPUT TCP WAN port set ${END_ROLLUP_IT}\n"
+        exit 1
+      fi
+    fi
+
+    if [ "${in_udp_wan_port_set}" != 'nd' ]; then
+      if [ -n "$(ipset list -n | grep "${in_udp_wan_port_set}")" ]; then
+        iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+          -m set --match-set "${in_udp_wan_port_set}" dst \
+          -j LOG --log-prefix "iptables [WAN{new,UDP}->INPUT]"
+
+        iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+          -m set --match-set "${in_udp_wan_port_set}" dst \
+          -j ACCEPT
+      else
+        printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find INPUT UDP WAN port set ${END_ROLLUP_IT}\n"
+        exit 1
+      fi
+    fi
+
   fi
 
   iptables -v -A OUTPUT -p ALL -s "${LO_IP_FW_RUI}" -j ACCEPT
@@ -339,18 +403,9 @@ beginFwRules_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-pingOfDeathProtection_FW_RUI() {
+privateNetBlock_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  # protects from PING of death
-  iptables -v -N PING_OF_DEATH
-  iptables -v -A PING_OF_DEATH -p icmp --icmp-type echo-request -m hashlimit --hashlimit 1/s \
-    --hashlimit-burst 10 --hashlimit-htable-expire 300000 \
-    --hashlimit-mode srcip --hashlimit-name t_PING_OF_DEATH -j RETURN
-
-  iptables -v -A PING_OF_DEATH -j DROP
-  iptables -v -A INPUT -p icmp --icmp-type echo-request -j PING_OF_DEATH
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }

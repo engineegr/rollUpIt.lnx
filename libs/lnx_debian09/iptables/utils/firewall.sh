@@ -30,7 +30,7 @@ loop_FW_RUI() {
   local -r LAN_EXP="${LAN_BASE}(\s${INDEX_EXP}){0,1}(\s${LAN_INFW_EXP})?"
 
   local -r WAN_BASE="--wan\sint=${NAME_EXP}\ssn=${SUBNET_EXP}\sip=(${IP_EXP}|nd)"
-  local -r WAN_IN_EXP="\strusted=${NAME_EXP}\s((wan_in_tcp_ports=${NAME_EXP}(\swan_in_udp_ports=${NAME_EXP})?)|(wan_in_udp_ports=${NAME_EXP}(\swan_in_tcp_ports=${NAME_EXP})?))"
+  local -r WAN_IN_EXP="\s(trusted=${NAME_EXP}\s)?((wan_in_tcp_ports=${NAME_EXP}(\swan_in_udp_ports=${NAME_EXP})?)|(wan_in_udp_ports=${NAME_EXP}(\swan_in_tcp_ports=${NAME_EXP})?))"
   local -r WAN_OUT_EXP="\s((wan_out_tcp_ports=${NAME_EXP}(\swan_out_udp_ports=${NAME_EXP})?)|(wan_out_udp_ports=${NAME_EXP}(\swan_out_tcp_ports=${NAME_EXP})?))"
   local -r WAN_EXP="${WAN_BASE}(${WAN_OUT_EXP})?(${WAN_IN_EXP})?"
   local -r IND_REQ_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s${INDEX_EXP}(\s${LAN_INFW_EXP})?"
