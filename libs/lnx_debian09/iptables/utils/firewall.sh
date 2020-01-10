@@ -14,7 +14,8 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/sm.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/configFirewall.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/iptables/synproxy.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/iptables/configFirewall.sh"
 
 loop_FW_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "

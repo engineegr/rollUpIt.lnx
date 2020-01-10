@@ -262,8 +262,8 @@ beginFwRules_FW_RUI() {
   iptables -v -A private_net_packets -s 192.0.2.0/24 -j DROP
   iptables -v -A private_net_packets -s 192.168.0.0/16 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
   iptables -v -A private_net_packets -s 192.168.0.0/16 -j DROP
-  iptables -v -A private_net_packets -s 10.0.0.0/8 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
-  iptables -v -A private_net_packets -s 10.0.0.0/8 -j DROP
+  # iptables -v -A private_net_packets -s 10.0.0.0/8 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  # iptables -v -A private_net_packets -s 10.0.0.0/8 -j DROP
   iptables -v -A private_net_packets -s 0.0.0.0/8 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
   iptables -v -A private_net_packets -s 0.0.0.0/8 -j DROP
   iptables -v -A private_net_packets -s 240.0.0.0/5 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
@@ -280,6 +280,8 @@ beginFwRules_FW_RUI() {
   iptables -v -A INPUT -p ALL -j allowed_packets
   iptables -v -A FORWARD -p ALL -j allowed_packets
   iptables -v -A OUTPUT -p ALL -j allowed_packets
+
+  iptables -v -A OUTPUT -p icmp --icmp-type echo-request -o "${WAN_IFACE_FW_RUI}" -d "0/0" -m state --state NEW -j ACCEPT
 
   if [ "${out_tcp_fw_port_set}" != 'nd' ]; then
     if [ -n "$(ipset list -n | grep "${out_tcp_fw_port_set}")" ]; then
@@ -350,7 +352,7 @@ beginFwRules_FW_RUI() {
     if [ "${in_tcp_wan_port_set}" != 'nd' ]; then
       if [ -n "$(ipset list -n | grep "${in_tcp_wan_port_set}")" ]; then
         prepareSYNPROXY_FW_RUI
-        ruleSYNPROXY_FW_RUI "${WAN_IFACE_FW_RUI}" "${in_tcp_wan_port_set}"
+        ruleSYNPROXY_FW_RUI "${WAN_IFACE_FW_RUI}" "${LO_IFACE_FW_RUI}" "${in_tcp_wan_port_set}"
       else
         printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find INPUT TCP WAN port set ${END_ROLLUP_IT}\n"
         exit 1
@@ -393,40 +395,13 @@ beginFwRules_FW_RUI() {
   # Enable routing.
   sysctl -w net.ipv4.ip_forward=1
   # Enable routing permanently
-  if [[ -z "$(sed -E '/net\.ipv4\.ip_forward/p' /etc/sysctl.conf)" ]]; then
+  if [[ -z "$(sed -E -n '/net\.ipv4\.ip_forward/p' /etc/sysctl.conf)" ]]; then
     sed -i -e '$a\\nnet.ipv4.ip_forward = 1' /etc/sysctl.conf
   else
-    sed -i -E 's/net\.ipv4\.ip_forward.*=.*/net.ipv4.ip_forward = 1/' /etc/sysctl.conf
+    sed -i -E 's/\#.*net\.ipv4\.ip_forward.*=.*/net.ipv4.ip_forward = 1/' /etc/sysctl.conf
   fi
 
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
-}
-
-privateNetBlock_FW_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
-}
-
-synTCPFloodProtection_FW_RUI() {
-  local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
-  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  iptables -v -A INPUT -p tcp --syn \
-    -m hashlimit --hashlimit 1/second \
-    --hashlimit-burst 15 --hashlimit-htable-expire 360000 \
-    --hashlimit-mode srcip --hashlimit-name SYN_FLOOD -j DROP
-
-  iptables -v -A INPUT -p tcp --dport "$SSH_PORT_FW_RUI" --syn -m hashlimit \
-    --hashlimit 2/hour --hashlimit-burst 7 --hashlimit-htable-expire 360000 \
-    --hashlimit-mode srcip --hashlimit-name SSH_FLOOD -j DROP
-
-  # no extentions tbf available for Debian
-  # iptables -v -A INPUT -p tcp --dport "$SSH_PORT_FW_RUI" --syn -m tbf ! --tbf 2/h --tbf-deepa 15 --tbf-mode srcip --tbf-name SSH_DOS -j DROP
-  # iptables -v -A INPUT -p tcp --syn -m tbf ! --tbf 1/s --tbf-deep 15 --tbf-mode srcip --tbf-name SYNC_FLOOD -j DROP
-
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
