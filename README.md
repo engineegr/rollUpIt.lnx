@@ -1,2 +1,2 @@
 # rollUpIt.lnx
-Scripts for customizing a linux distributive 
+Cook your service
