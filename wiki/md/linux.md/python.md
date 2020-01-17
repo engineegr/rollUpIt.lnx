@@ -160,6 +160,12 @@ If you directly run a script or the python interpreter from the virtualenv’s b
 
 - Virtual environments are tied to specific versions of Python. At the time a virtual environment is created, you can set the associated Python binary with virtualenv’s --python option: `virtualenv -p PYTHON_EXE, --python=PYTHON_EXE`
 
+8. ##### Migrate packages from pip to pip3
+
+`pip freeze --local | grep -v '^\-e' | cut -d = -f 1  | xargs pip install -U`
+
+[from here](pip freeze --local | grep -v '^\-e' | cut -d = -f 1  | xargs pip install -U)
+
 >[!Link]
 > 1. [About virtualenv](https://virtualenv.pypa.io/en/latest/reference/)
 > 2. [Automate the Boring Stuff with Python: Practical Programming for Total Beginners](https://www.amazon.com/dp/1593275994/ref=sr_1_1?keywords=Automate+the+Boring+Stuff+with+Python%3A+Practical+Programming+in+book&qid=1562578810&sr=8-1#customerReviews)
