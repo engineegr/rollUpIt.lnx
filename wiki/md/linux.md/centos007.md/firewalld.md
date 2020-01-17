@@ -74,5 +74,7 @@ To remove the rules:
 sudo firewall-cmd --zone=public --remove-masquerade
 ```
 
+**IMPORTANT**: don't forget to reload the `firewall-cmd` - `firewall-cmd --reload` after any manipulation.
+
 >[!Links]
 >1. [Basic firewalld](https://www.linode.com/docs/security/firewalls/introduction-to-firewalld-on-centos/)
