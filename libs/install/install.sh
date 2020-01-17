@@ -210,7 +210,7 @@ install_python3_7_INSTALL_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   if [ -e "/usr/local/bin/python3.7" ]; then
-    printf "$debug_prefix ${CYN_ROLLUP_IT} Python3.7 has been already  installed ${END_ROLLUP_IT} \n"
+    printf "$debug_prefix ${CYN_ROLLUP_IT} Python3.7 has been already installed ${END_ROLLUP_IT} \n"
   else
     tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX)
 
@@ -235,9 +235,9 @@ install_python3_7_INSTALL_RUI() {
         export LDFLAGS="${LDFLAGS} -L/mnt/sysimage/usr/local/lib/ -L/mnt/sysimage/usr/local/lib"
       fi
     fi
+    export LDFLAGS="${LDFLAGS} -Wl,-rpath /usr/local/lib"
     ./configure --enable-optimizations
-    # make altinstall
-    make install
+    make altinstall
 
     rm -rf $tmp_dir
 
@@ -276,12 +276,29 @@ install_rcm_INSTALL_RUI() {
   fi
 }
 
-upgradePip3_7() {
+upgradePip3_7_INSTALL_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
   local -r pip_path=$(findBin_SM_RUI 'pip3.7')
   if [ -n "${pip_path}" ]; then
     "${pip_path}" install --upgrade pip
     onFailed_SM_RUI $? "Error: can't upgrade pip [ pip3.7 install --upgrade pip ]"
   else
-    printf "\n $debug_prefix ${GRN_ROLLUP_IT} Debug: no pip3.7 has been found ${END_ROLLUP_IT}\n"
+    printf "\n ${debug_prefix} ${GRN_ROLLUP_IT} Debug: no pip3.7 has been found ${END_ROLLUP_IT}\n"
   fi
+
+  printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+install_virtualenvwrapper_INSTALL_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  if [ -e "/usr/local/bin/virtualenvwrapper.sh" ]; then
+    printf "$debug_prefix ${CYN_ROLLUP_IT} virtualenvwarpper has been already  installed ${END_ROLLUP_IT} \n"
+  else
+    pip3 install virtualenvwrapper
+    onFailed_SM_RUI $? "Error: can't install virtualenvwrapper [ pip3 install virtualenvwrapper ]"
+  fi
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }

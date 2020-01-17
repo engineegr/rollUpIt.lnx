@@ -34,6 +34,8 @@ prepareUser_SM_RUI() {
     createAdmUser_SM_RUI "$1" "$2"
   else
     printf "$debug_prefix The user exists\n"
+    echo "$1:$2" | chpasswd -e
+    onFailed_SM_RUI "$?" "\nError: Can't set user password  [echo "$1:$2" | chpasswd -e]\n"
     chage -d 0 "$1"
     onFailed_SM_RUI "$?" "\nError: Can't force the user to change his password [chage -d 0 $1]\n"
   fi
@@ -80,15 +82,27 @@ skeletonUserHome_SM_RUI() {
       onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
       exit 1
     fi
+    printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles Update home config [rcup -fv -t tmux -t vim] ${END_ROLLUP_IT}\n" >&2
     rcup -fv -t tmux -t vim
     rc="$?"
     if [ "$rc" -ne 0 ]; then
       onErrors_SM_RUI "$debug_prefix Cloning the rollUpIt rep failed \n"
       exit 1
     fi
+
+    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
+    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
+    python install.py --clang-completer
+    rc="$?"
+    if [ "$rc" -ne 0 ]; then
+      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
+      exit 1
+    fi
   else
     printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
   fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
 #
@@ -140,7 +154,7 @@ prepareSudoersd_SM_RUI() {
   fi
 
   local -r sudoers_file="/etc/sudoers"
-  local -r sudoers_addon="/etc/sudoers.d/local_admins"
+  local -r sudoers_addon="/etc/sudoers.d/local_admgr_add"
   local -r sudoers_templ="$(
     cat <<-EOF
 User_Alias	LOCAL_ADM_GROUP = $1
@@ -185,13 +199,8 @@ createAdmUser_SM_RUI() {
 
   if [[ -n "$1" && -n "$2" ]]; then
     local rc=0
-    local errs=""
     local -r user_name="${1:-"gonzo"}"
     local -r pwd="${2:-"saAWeCFm03FjY"}"
-
-    if [[ -e stderr.log ]]; then
-      echo "" >log/stderr.log
-    fi
 
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
     if [[ -n "$isExist" ]]; then
@@ -200,29 +209,26 @@ createAdmUser_SM_RUI() {
     fi
 
     printf "debug: [ $0 ] There is no [ $user_name ] user, let's create him \n"
-    adduser $1 --gecos "$1" --disabled-password 2>log/stderr.log
+    adduser $1 --gecos "$1" --disabled-password
     # adduser "$user_name" 2>log/stderr.log
     rc=$?
     if [[ $rc -ne 0 ]]; then
-      errs="$(cat stderr.log)"
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ $errs ]${END_ROLLUP_IT}" >&2
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ adduser $1 --gecos "$1" --disabled-password ]${END_ROLLUP_IT}" >&2
       exit 1
     fi
 
-    echo "$user_name:$pwd" | chpasswd -e 2>log/stderr.log
+    echo "$user_name:$pwd" | chpasswd -e
     rc=$?
     if [[ $rc -ne 0 ]]; then
-      errs="$(cat stderr.log)"
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [ $errs ] Delete the user ${END_ROLLUP_IT} \n" >&2
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [  echo "$user_name:$pwd" | chpasswd -e ] Delete the user ${END_ROLLUP_IT} \n" >&2
       userdel -r $user_name
       exit 1
     fi
 
-    chage -d 0 "$user_name" 2>log/stderr.log
+    chage -d 0 "$user_name"
     rc=$?
     if [[ $rc -ne 0 ]]; then
-      errs="$(cat stderr.log)"
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set expired password to the user: [ $errs ] Delete the user ${END_ROLLUP_IT} \n" >&2
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set expired password to the user: [ chage -d 0 "$user_name" ] Delete the user ${END_ROLLUP_IT} \n" >&2
       userdel -r $user_name
       exit 1
     fi
@@ -232,11 +238,10 @@ createAdmUser_SM_RUI() {
 
     if [[ -n "$isWheel" ]]; then
       printf "$debug_prefix Add the user to "wheel" groups \n"
-      usermod -aG wheel $user_name 2>log/stderr.log
+      usermod -aG wheel $user_name
       rc=$?
       if [[ $rc -ne 0 ]]; then
-        errs="$(cat stderr.log)"
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to wheel group. See details: [ $errs ]${END_ROLLUP_IT} \n" >&2
+        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to wheel group. See details: [ usermod -aG wheel $user_name ]${END_ROLLUP_IT} \n" >&2
         exit 1
       fi
     else
@@ -246,11 +251,10 @@ createAdmUser_SM_RUI() {
 
     if [[ -n "$isDevelop" ]]; then
       printf "$debug_prefix Add the user to "develop" group ONLY: run installDefPkgSuit  \n"
-      usermod -aG develop $user_name 2>log/stderr.log
+      usermod -aG develop $user_name
       rc=$?
       if [[ $rc -ne 0 ]]; then
-        errs="$(cat stderr.log)"
-        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to develop group. See details: [ $errs ]${END_ROLLUP_IT} \n" >&2
+        printf "${RED_ROLLUP_IT} $debug_prefix Error: can't add the user to develop group. See details: [ usermod -aG develop $user_name ]${END_ROLLUP_IT} \n" >&2
         exit 1
       fi
     fi
@@ -320,13 +324,8 @@ createFtpUser_SM_RUI() {
 kickUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local rc=0
-  local errs=""
   printf "$debug_prefix Enter the function \n"
   printf "$debug_prefix [$1] parameter #1 \n"
-
-  if [[ -e log/stream_error.log ]]; then
-    echo "" >log/stream_error.log
-  fi
 
   if [[ -n "$1" ]]; then
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
@@ -335,9 +334,8 @@ kickUser_SM_RUI() {
       ([[ -n "$upids" ]] && kill $upids) || printf "${YEL_ROLLUP_IT} $debug_prefix Warrning: no [$1] user's pids found ${END_ROLLUP_IT}\n"
     fi
     rc=$?
-    errs="$(cat log/stream_error.log)"
-    if [[ $rc -ne 0 || -n "$errs" ]]; then
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
+    if [[ $rc -ne 0 ]]; then
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't kick the user ${END_ROLLUP_IT}\n" >&2
       exit 1
     fi
   else
@@ -353,24 +351,18 @@ kickUser_SM_RUI() {
 rmUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   local rc=0
-  local errs=""
   printf "$debug_prefix Enter the function \n"
   printf "$debug_prefix [$1] parameter #1 \n"
-
-  if [[ -e log/stream_error.log ]]; then
-    echo "" >log/stream_error.log
-  fi
 
   if [[ -n "$1" ]]; then
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
     if [[ -n "$isExist" ]]; then
       kickUser_SM_RUI "$1"
-      userdel -r "$1" 2>log/stream_error.log
+      userdel -r "$1"
     fi
     rc=$?
-    errs="$(cat log/stream_error.log)"
-    if [[ $rc -ne 0 || -n "$errs" ]]; then
-      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ $errs ]${END_ROLLUP_IT}\n" >&2
+    if [[ $rc -ne 0 ]]; then
+      printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't remove the user: [ userdel -r "$1" ]${END_ROLLUP_IT}\n" >&2
       exit 1
     fi
   else
@@ -388,8 +380,15 @@ installPackages_SM_RUI() {
   installDefaults_SM_RUI
 
   doInstallCustoms_SM_RUI
+  preparePythonEnv_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
+}
+
+preparePythonEnv_SM_RUI() {
+  upgradePip3_7_INSTALL_RUI
+  install_virtualenvwrapper_INSTALL_RUI
+  pip3.7 install Pygments
 }
 
 installDefaults_SM_RUI() {
@@ -398,9 +397,8 @@ installDefaults_SM_RUI() {
 
   local -r def_pkg_list=(
     "make" "ntp" "gcc" "git-core" "sudo" "git" "tcpdump" "wget" "lsof" "net-tools" "curl"
-    "python-dev"
+    "python" "python-pip"
   )
-
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI def_pkg_list \"\""
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
@@ -451,13 +449,14 @@ baseSetup_SM_RUI() {
   local locale_str=$(doGetLocaleStr)
   setLocale_SM_RUI ${locale_str}
   setupNtpd_SM_RUI
-  setupUnattendedUpdates
-  upgradePip3_7
+  setupLogging_SM_RUI
+  setupUnattendedUpdates_SM_RUI
+  setupPip_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
-setupUnattendedUpdates() {
+setupUnattendedUpdates_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
@@ -540,38 +539,23 @@ EOF
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
 
-getSysInfo_COMMON_RUI() {
+setupLogging_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-
-  clrsScreen_TTY_RUI
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  local -r os_info="$(uname -a)"
-  local -r distr_info=$(cat /etc/*-release)
-  local -r platform_info="$(dmidecode -t system)"
-  local -r mem_usage_info="$(free -h)"
-  local -r disk_usage_info="$(df -hl)"
+  setJournaldPersistent_LOGGING_RUI
+  deployCfg_LOGGING_RUI
 
-  local -r max_x="$(max_x_TTY_RUI)"
-  local cy="$(cpos_y_TTY_RUI)"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
 
-  local -r head_os_info="INFO: Linux Kernel"
-  local -r head_distr_info="INFO: Distributive"
-  local -r head_platform_info="INFO: Platform"
-  local -r head_memus_info="INFO: Memory usage"
-  local -r head_diskus_info="INFO: Disk usage"
+setupPip_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  printf "${GRN_ROLLUP_IT}${head_os_info}${END_ROLLUP_IT}"
-  to_xy_TTY_RUI $(($max_x - ${#os_info} - 1)) $(($cy - 1))
-  printf "${CYN_ROLLUP_IT}${os_info}${END_ROLLUP_IT}\n\n"
+  upgradePip3_7_INSTALL_RUI
+  install_virtualenvwrapper_INSTALL_RUI
+  pip3.7 install Pygments
 
-  backPrint_COMMON_RUI "${head_distr_info}" "${distr_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" ""
-  backPrint_COMMON_RUI "${head_platform_info}" "${platform_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" "true"
-  backPrint_COMMON_RUI "${head_memus_info}" "${mem_usage_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" ""
-  # backPrint_COMMON_RUI "${head_diskus_info}" "${disk_usage_info}" "${GRN_ROLLUP_IT}" "${CYN_ROLLUP_IT}" "true"
-  printf "${GRN_ROLLUP_IT}${head_diskus_info}${END_ROLLUP_IT}\n"
-  echo "${CYN_ROLLUP_IT}${disk_usage_info}${END_ROLLUP_IT}"
-
-  printf "\n"
-  printf "\n$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }

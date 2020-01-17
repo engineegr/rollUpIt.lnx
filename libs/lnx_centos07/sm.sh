@@ -26,10 +26,12 @@ doInstallCustoms_SM_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
   local -r pkg_list=(
     "zlib-devel" "bzip2" "bzip2-devel" "openssl-devel" "libffi-devel" "yum-cron"
-    "yum-utils" "ncurses-devel" "kernel-devel" "python-devel" "python-pip"
-    "ncurses" "ncurses-devel" "ncurses-libs" "ncurses-base" "python-libs"
-    "cmake3"
+    "yum-utils" "kernel-devel" "python-devel" "ncurses" "ncurses-devel"
+    "ncurses-libs" "ncurses-base" "python-libs" "cmake3" "sqlite-devel"
+    "readline-devel" "tk-devel" "gdbm-devel" "db4-devel"
+    "libpcap-devel" "xz-devel" "libffi-devel"
   )
+
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""
 
   local -r deps_list=(
@@ -42,6 +44,7 @@ doInstallCustoms_SM_RUI() {
     "install_vim8_INSTALL_RUI"
     "install_grc_INSTALL_RUI"
     "install_rcm_INSTALL_RUI"
+    "install_virtualenvwrapper_INSTALL_RUI"
   )
 
   # runInBackground_COMMON_RUI "install_python3_7_INSTALL_RUI"

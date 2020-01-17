@@ -46,10 +46,10 @@ main() {
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
-if [ ! -d "${HOME}/rui/log" ]; then
-  mkdir -p "${HOME}/rui/log"
+if [ ! -d "${HOME}/tmp/rui/log" ]; then
+  mkdir -p "${HOME}/tmp/rui/log"
 fi
 
 LOG_FP=$(getShLogName_COMMON_RUI $0)
-main $@ 2>&1 | tee "${HOME}/rui/log/${LOG_FP}"
+main $@ 2>&1 | tee "${HOME}/tmp/rui/log/${LOG_FP}"
 exit 0

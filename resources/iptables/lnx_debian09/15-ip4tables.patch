@@ -1,0 +1,47 @@
+--- /usr/share/netfilter-persistent/plugins.d/15-ip4tables.orig	2019-12-22 01:29:43.085087664 +1100
++++ /usr/share/netfilter-persistent/plugins.d/15-ip4tables	2019-12-22 01:56:24.695030762 +1100
+@@ -16,6 +16,18 @@
+ 
+ load_rules()
+ {
++  local root_dir_roll_up_it="/usr/local/src/post-scripts"
++  # load modules
++  ${root_dir_roll_up_it}/rollUpIt.lnx/libs/lnx_debian09/iptables/utils/firewall.sh --lm
++  local ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
++
++  if [ -e "${ipset_rules_v4_fp}" ]; then
++    echo "Debug [ipset]: restore ipset rules store file \n"
++    /sbin/ipset restore -file "${ipset_rules_v4_fp}" 
++  else
++    echo "Debug [ipset]: there is nothing to restore\n"
++  fi
++
+ 	#load IPv4 rules
+ 	if [ ! -f /etc/iptables/rules.v4 ]; then
+ 		echo "Warning: skipping IPv4 (no rules to load)"
+@@ -42,11 +51,24 @@
+ 		if [ $? -ne 0 ]; then
+ 			rc=1
+ 		fi
+-	fi
++    local ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
++    if [ ! -e "$ipset_rules_v4_fp" ]; then
++      echo "Debug [ipset]: there is no the ipset rules store file: create it\n"
++      if [[ ! -e "/etc/ipset" ]]; then
++        mkdir "/etc/ipset"
++        chmod -Rf 0755 "/etc/ipset"
++      fi
++      touch "${ipset_rules_v4_fp}"
++      chmod 0640 "${ipset_rules_v4_fp}"
++    fi
++    /sbin/ipset save >"$ipset_rules_v4_fp"
++  fi
+ }
+ 
+ flush_rules()
+ {
++  /sbin/ipset flush
++  /sbin/ipset destroy
+ 	if [ ! -f /proc/net/ip_tables_names ]; then
+ 		log_action_cont_msg "Warning: skipping IPv4 (no module loaded)"
+ 	elif [ -x /sbin/iptables ]; then

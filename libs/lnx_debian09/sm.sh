@@ -19,30 +19,23 @@ doUpdate_SM_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
 
-#__unlock_apt() {
-#  local -r locker="/var/cache/apt/archives/lock"
-#  if [ -f "$locker" ]; then
-#    mv "$locker" "$locker"_bak || true
-#  fi
-#}
-
 doInstallCustoms_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
   local -r pkg_list=(
-    "python3" "python3-pip" "python3-venv" "tmux" "vim" "bc"
-    "build-essential" "zlib1g-dev" "libncurses5-dev" "libgdbm-dev"
-    "libnss3-dev" "libssl-dev" "libreadline-dev" "libffi-dev"
-    "ntpdate" "python-dev" "ruby-dev" "libbz2-dev" "libsqlite3-dev" "dbus"
-    "llvm" "libncursesw5-dev" "xz-utils" "tk-dev" "liblzma-dev" "python-openssl"
+    "python-dev" "build-essential"
+    "zlib1g-dev" "libncurses5-dev" "libgdbm-dev" "libnss3-dev" "openssl"
+    "libssl-dev" "libreadline-dev" "libffi-dev" "ntpdate" "ruby-dev"
+    "libbz2-dev" "libsqlite3-dev" "dbus" "llvm" "libncursesw5-dev"
+    "xz-utils" "tk-dev" "liblzma-dev" "python-openssl"
   )
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""
 
-  #  local -r deps_list=(
-  #    "install_python3_7_INSTALL_RUI"
-  #    "install_golang_INSTALL_RUI"
-  #  )
+  local -r deps_list=(
+    "install_python3_7_INSTALL_RUI"
+    "install_golang_INSTALL_RUI"
+  )
 
   local -r cmd_list=(
     "install_tmux_INSTALL_RUI"
@@ -51,9 +44,7 @@ doInstallCustoms_SM_RUI() {
     "install_rcm_INSTALL_RUI"
   )
 
-  runInBackground_COMMON_RUI "install_python3_7_INSTALL_RUI"
-  runInBackground_COMMON_RUI "install_golang_INSTALL_RUI"
-  # runCmdListInBackground_COMMON_RUI deps_list
+  runCmdListInBackground_COMMON_RUI deps_list
   runCmdListInBackground_COMMON_RUI cmd_list
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
