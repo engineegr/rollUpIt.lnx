@@ -31,15 +31,16 @@ loop_FW_RUI() {
   local -r LAN_EXP="${LAN_BASE}(\s${INDEX_EXP}){0,1}(\s${LAN_INFW_EXP})?"
 
   local -r WAN_BASE="--wan\sint=${NAME_EXP}\ssn=${SUBNET_EXP}\sip=(${IP_EXP}|nd)"
-  local -r WAN_IN_EXP="\s(trusted=${NAME_EXP}\s)?((wan_in_tcp_ports=${NAME_EXP}(\swan_in_udp_ports=${NAME_EXP})?)|(wan_in_udp_ports=${NAME_EXP}(\swan_in_tcp_ports=${NAME_EXP})?))"
+  local -r WAN_IN_EXP="\s(trusted=${NAME_EXP}\s)?((wan_in_tcp_ports=${NAME_EXP}(\swan_in_udp_ports=${NAME_EXP})?)|(wan_in_udp_ports=${NAME_EXP}(\swan_in_tcp_ports=${NAME_EXP})?))(\ssynproxy)?"
   local -r WAN_OUT_EXP="\s((wan_out_tcp_ports=${NAME_EXP}(\swan_out_udp_ports=${NAME_EXP})?)|(wan_out_udp_ports=${NAME_EXP}(\swan_out_tcp_ports=${NAME_EXP})?))"
   local -r WAN_EXP="${WAN_BASE}(${WAN_OUT_EXP})?(${WAN_IN_EXP})?"
   local -r IND_REQ_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s${INDEX_EXP}(\s${LAN_INFW_EXP})?"
   local -r INS_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s(${INDEX_EXP}){0,1}(${LAN_INFW_EXP}){0,1}"
 
   local -r LINK_EXP="--link\slan001_iface=${NAME_EXP}\slan002_iface=${NAME_EXP}\sindex_f=[[:digit:]]+"
+  local -r PORT_FRW_EXP="--pf\swan_iface=${NAME_EXP}\sfrom_port=\d+\sto_ip=${IP_EXP}\sto_port=\d+"
 
-  if [ -z "$(echo $@ | grep -P "((${WAN_EXP}(\s${LAN_EXP}))|(${INS_LAN_EXP})|(${LINK_EXP})|(--reset)|(--install)|(--lm)|(--lf)|(--ln)|(-h))")" ]; then
+  if [ -z "$(echo $@ | grep -P "((${WAN_EXP}(\s${LAN_EXP}))|(${INS_LAN_EXP})|(${LINK_EXP})|(${PORT_FRW_EXP})|(--reset)|(--install)|(--lm)|(--lf)|(--ln)|(-h))")" ]; then
     printf "${debug_prefix} ${RED_ROLLUP_IT} ERROR: Invalid arguments ${END_ROLLUP_IT}\n"
     help_FW_RUI
     exit 1
@@ -48,6 +49,9 @@ loop_FW_RUI() {
   local __opts=""
   local if_save_rules="false"
   local if_begin="false"
+  local index_i="nd"
+  local index_f="nd"
+  local index_o="nd"
   local -r IF_DEBUG_FW_RUI="false"
 
   while getopts ":h-:" opt; do
@@ -85,6 +89,7 @@ loop_FW_RUI() {
             local wan_out_udp_ports="nd"
             local wan_in_tcp_ports="nd"
             local wan_in_udp_ports="nd"
+            local is_synproxy="false"
 
             if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_out_tcp_ports=.*${LAN_EXP}.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
@@ -116,12 +121,18 @@ loop_FW_RUI() {
               printf "${debug_prefix} ${GRN_ROLLUP_IT} Input UDP Port set: '--${OPTARG}' param: '${wan_in_udp_ports}' ${END_ROLLUP_IT} \n"
             fi
 
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*synproxy.*${LAN_EXP}.*)$")" ]; then
+              OPTIND=$(($OPTIND + 1))
+              is_synproxy="true"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} SYNPROXY is set ${END_ROLLUP_IT} \n"
+            fi
+
             if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
               # clearFwState_FW_RUI
               defineFwConstants_FW_RUI
               beginFwRules_FW_RUI "${int_name}" "${sn}" "${gw_ip}" \
                 "${wan_out_tcp_ports}" "${wan_out_udp_ports}" \
-                "${trusted_ipset}" "${wan_in_tcp_ports}" "${wan_in_udp_ports}"
+                "${trusted_ipset}" "${wan_in_tcp_ports}" "${wan_in_udp_ports}" "${is_synproxy}"
             fi
             if_save_rules="true"
             if_begin="true"
@@ -156,9 +167,6 @@ loop_FW_RUI() {
             fi
 
             local wan_iface=""
-            local index_i="nd"
-            local index_f="nd"
-            local index_o="nd"
             local trusted_ipset="nd"
             local in_tcp_fw_ports="nd"
             local in_udp_fw_ports="nd"
@@ -239,6 +247,39 @@ loop_FW_RUI() {
             if_save_rules="true"
 
             OPTIND=$(($OPTIND + 1))
+            ;;
+          pf)
+            local wan_iface="nd"
+            local from_port="nd"
+            local to_ip="nd"
+            local to_port="nd"
+            local is_synproxy="false"
+
+            wan_iface="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "${debug_prefix} ${GRN_ROLLUP_IT} Debug: PORT FORWARD - wan_iface [ ${wan_iface} ] ${END_ROLLUP_IT}\n"
+            OPTIND=$(($OPTIND + 1))
+
+            from_port="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "${debug_prefix} ${GRN_ROLLUP_IT} Debug: PORT FORWARD - from_port [ ${from_port} ] ${END_ROLLUP_IT}\n"
+            OPTIND=$(($OPTIND + 1))
+
+            to_ip="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "${debug_prefix} ${GRN_ROLLUP_IT} Debug: PORT FORWARD - to_ip [ ${to_ip} ] ${END_ROLLUP_IT}\n"
+            OPTIND=$(($OPTIND + 1))
+
+            to_port="$(extractVal_COMMON_RUI "${!OPTIND}")"
+            printf "${debug_prefix} ${GRN_ROLLUP_IT} Debug: PORT FORWARD - to_port [ ${to_port} ] ${END_ROLLUP_IT}\n"
+            OPTIND=$(($OPTIND + 1))
+
+            index_f="$(iptables -L FORWARD -v -n --line-number | tail -n 1 | cut -d' ' -f1)"
+
+            if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
+              defineFwConstants_FW_RUI
+              portForwarding_FW_RUI "${wan_iface}" "${from_port}" \
+                "${to_ip}" "${to_port}" "${index_f}"
+
+              if_save_rules="true"
+            fi
             ;;
           link)
             local lan001_iface="nd"

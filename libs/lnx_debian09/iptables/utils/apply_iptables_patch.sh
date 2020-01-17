@@ -27,7 +27,7 @@ main() {
     exit 1
   else
     local -r start_tm="$(date +%Y%m_%H%M%S)"
-    cp "${dest_fp}" "${dest_fp}.orig"
+    cp "${dest_fp}" "${dest_fp}_${start_tm}.orig"
     echo "${debug_prefix} Debug [apply_iptables_patch] Apply patch ${patch_fp} to ${dest_fp}"
     patch "${dest_fp}" <"${patch_fp}"
   fi

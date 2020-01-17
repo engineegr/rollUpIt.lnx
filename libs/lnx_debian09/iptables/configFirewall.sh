@@ -12,9 +12,10 @@ help_FW_RUI() {
   echo "Usage:" >&2
   echo "-h - print help" >&2
   echo "--install - install <iptables-persistent> and <ip-set>" >&2
-  echo "--wan - WAN (format: --wan int=... sn=... ip=... [out_tcp_fw_ports=... out_udp_fw_ports=...] [trusted=... wan_in_tcp_ports=... wan_in_udp_ports=...]" >&2
+  echo "--wan - WAN (format: --wan int=... sn=... ip=... [out_tcp_fw_ports=... out_udp_fw_ports=...] [[trusted=...] wan_in_tcp_ports=... wan_in_udp_ports=... [synproxy]]" >&2
   echo "--lan - LAN (format: --lan int=... sn=... ip=... [out_tcp_fwr_ports=... out_udp_fwr_ports=...] [wan_int=... index_i=... index_f=... index_o=... ] [trusted=... in_tcp_fw_ports=... in_udp_fw_ports=...]" >&2
   echo "--link lan001_iface=... lan002_iface=... index_f=..."
+  echo "--pf wan_iface=... from_port=... to_ip=... to_port=..."
   echo "--reset - reset rules" >&2
   echo "--lf - list filter rules" >&2
   echo "--ln - list nat rules" >&2
@@ -65,6 +66,9 @@ loadFwModules_FW_RUI() {
 defineFwConstants_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  local -rg VBOX_IP_FW_RUI="10.0.2.2"
+  local -rg VBOX_IFACE_FW_RUI="eth0"
 
   # -rg - global readonly
   declare -rg LO_IFACE_FW_RUI="lo"
@@ -185,9 +189,10 @@ clearFwState_FW_RUI() {
 # arg3 - wan ip
 # arg4 - tcp ipset out forward ports
 # arg5 - udp ipset out forward ports
-# arg5 - trusted ip set
-# arg6 - input tcp WAN port set
-# arg7 - input udp WAN port set
+# arg6 - trusted ip set
+# arg7 - input tcp WAN port set
+# arg8 - input udp WAN port set
+# arg9 - use syn proxy for INPUT TCP connections
 #
 beginFwRules_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
@@ -207,9 +212,14 @@ beginFwRules_FW_RUI() {
   local -r trusted_ipset="${6:-'nd'}"
   local -r in_tcp_wan_port_set="${7:-'nd'}"
   local -r in_udp_wan_port_set="${8:-'nd'}"
+  local -r is_synproxy="${9:-'true'}"
 
   # Always accept loopback traffic
-  iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -j ACCEPT
+  # iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -j ACCEPT
+  iptables -I INPUT -p tcp -i "${VBOX_IFACE_FW_RUI}" -s "${VBOX_IP_FW_RUI}" -m state --state NEW --dport 22 -j ACCEPT
+  iptables -I INPUT -p udp -i "${VBOX_IFACE_FW_RUI}" -s "${VBOX_IP_FW_RUI}" -m state --state NEW --dport 68 -j ACCEPT
+  iptables -I INPUT -p udp -i "${VBOX_IFACE_FW_RUI}" -s "${VBOX_IP_FW_RUI}" -m state --state NEW --dport 53 -j ACCEPT
+  iptables -I OUTPUT -p udp -o "${VBOX_IFACE_FW_RUI}" -m state --state NEW --dport 67 -j ACCEPT
 
   # Declare user chains
   iptables -v -N bad_tcp_packets
@@ -351,8 +361,18 @@ beginFwRules_FW_RUI() {
   else
     if [ "${in_tcp_wan_port_set}" != 'nd' ]; then
       if [ -n "$(ipset list -n | grep "${in_tcp_wan_port_set}")" ]; then
-        prepareSYNPROXY_FW_RUI
-        ruleSYNPROXY_FW_RUI "${WAN_IFACE_FW_RUI}" "${LO_IFACE_FW_RUI}" "${in_tcp_wan_port_set}"
+        if [[ "${is_synproxy}" == "true" ]]; then
+          prepareSYNPROXY_FW_RUI
+          inFwRuleSYNPROXY_FW_RUI "${WAN_IFACE_FW_RUI}" "${LO_IFACE_FW_RUI}" "${in_tcp_wan_port_set}"
+        else
+          iptables -v -A INPUT -p tcp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+            -m set --match-set "${in_tcp_wan_port_set}" dst \
+            -j LOG --log-prefix "iptables [WAN{new,TCP}->INPUT]"
+
+          iptables -v -A INPUT -p tcp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+            -m set --match-set "${in_tcp_wan_port_set}" dst \
+            -j ACCEPT
+        fi
       else
         printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find INPUT TCP WAN port set ${END_ROLLUP_IT}\n"
         exit 1
@@ -412,8 +432,9 @@ saveFwState_FW_RUI() {
   local -r ipset_rules_v4_fp="/etc/ipset/ipset.rules.v4"
   local -r ipt_store_file="/etc/iptables/rules.v4"
   if [[ ! -e "$ipt_store_file" ]]; then
-    printf "$debug_prefix ${RED_ROLLUP_IT} Error: there is no the iptables rules store file ${END_ROLLUP_IT}\n"
-    exit 1
+    printf "$debug_prefix ${RED_ROLLUP_IT} Debug: there is no the iptables rules store file ${END_ROLLUP_IT}\n"
+    touch "${ipt_store_file}"
+    chmod "0750" "${ipt_store_file}"
   fi
 
   if [[ ! -e "$ipset_rules_v4_fp" ]]; then
@@ -582,16 +603,40 @@ endFwRules_FW_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
+#
+# arg1 - WAN iface
+# arg2 - from port
+# arg3 - to ip
+# arg4 - to port
+# arg5 - an index in the FORWARD chain to be inserted
+#
 portForwarding_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  local -r dest_port=$([ -z "$1" ] && echo "2222" || echo "$1")
-  local -r fwd_ip=$([ -z "$2" ] && echo "10.10.0.21" || echo "$2")
-  local -r fwd_port=$([ -z "$3" ] && echo "$SSH_PORT_FW_RUI" || echo "$3")
+  local -r wan_iface="$1"
+  local -r from_port=$([ -z "$2" ] && echo "2222" || echo "$2")
+  local -r to_ip=$([ -z "$3" ] && echo "10.10.0.21" || echo "$3")
+  local -r to_port=$([ -z "$4" ] && echo "$SSH_PORT_FW_RUI" || echo "$4")
+  local -r index_f="$5"
+  local -r wan_ip="$(ip -h addr | sed -n "/.*inet.*\/.*${wan_iface}.*/p" | sed -E 's/.*inet\s(.*)\/.*/\1/g')"
+  printf "${debug_prefix} Use wan ip: ${wan_ip}\n"
+  checkNetworkAddr_COMMON_RUI "${wan_ip}"
 
-  iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -p tcp -d "${fwd_ip}" --dport "${fwd_port}" -j ACCEPT
-  iptables -v -t nat -I PREROUTING -p tcp -i "${WAN_IFACE_FW_RUI}" --dport "${dest_port}" -j DNAT --to "${fwd_ip}":"${fwd_port}"
+  iptables -v -t nat -A PREROUTING -p tcp --dst "${wan_ip}" --dport "${from_port}" \
+    -j DNAT --to "${to_ip}:${to_port}"
+
+  iptables -v -I FORWARD "${index_f}" -p tcp --dst "${to_ip}" --dport "${to_port}" -j ACCEPT
+
+  #
+  # see https://www.opennet.ru/docs/RUS/iptables/#TABLE.LIMITMATCH
+  # request from LAN
+  #
+  iptables -v -t nat -A POSTROUTING -p tcp --dst "${to_ip}" --dport "${to_port}" \
+    -j SNAT --to-source "${wan_ip}"
+
+  iptables -t nat -A OUTPUT -p tcp --dport "${from_port}" -j DNAT \
+    --to "${to_ip}:${to_port}"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }

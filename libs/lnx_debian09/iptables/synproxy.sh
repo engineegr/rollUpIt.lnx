@@ -45,7 +45,7 @@ prepareSYNPROXY_FW_RUI() {
 # arg1 - Loopback interface
 # arg1 - tcp port set
 #
-ruleSYNPROXY_FW_RUI() {
+inFwRuleSYNPROXY_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
