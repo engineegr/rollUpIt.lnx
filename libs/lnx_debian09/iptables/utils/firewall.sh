@@ -124,7 +124,6 @@ loop_FW_RUI() {
             if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*synproxy.*${LAN_EXP}.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
               is_synproxy="true"
-              printf "${debug_prefix} ${GRN_ROLLUP_IT} SYNPROXY is set ${END_ROLLUP_IT} \n"
             fi
 
             if [[ "${IF_DEBUG_FW_RUI}" == "false" ]]; then
@@ -132,7 +131,8 @@ loop_FW_RUI() {
               defineFwConstants_FW_RUI
               beginFwRules_FW_RUI "${int_name}" "${sn}" "${gw_ip}" \
                 "${wan_out_tcp_ports}" "${wan_out_udp_ports}" \
-                "${trusted_ipset}" "${wan_in_tcp_ports}" "${wan_in_udp_ports}" "${is_synproxy}"
+                "${trusted_ipset}" "${wan_in_tcp_ports}" \
+                "${wan_in_udp_ports}" "${is_synproxy}"
             fi
             if_save_rules="true"
             if_begin="true"

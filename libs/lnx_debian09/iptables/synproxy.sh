@@ -41,9 +41,9 @@ prepareSYNPROXY_FW_RUI() {
 }
 
 #
-# arg0 - WAN iface
-# arg1 - Loopback interface
-# arg1 - tcp port set
+# arg1 - WAN iface
+# arg2 - Loopback interface
+# arg3 - tcp port set
 #
 inFwRuleSYNPROXY_FW_RUI() {
   local debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
@@ -70,13 +70,18 @@ inFwRuleSYNPROXY_FW_RUI() {
   iptables -A OUTPUT -o "${wan_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" src \
     --tcp-flags SYN,ACK ACK,SYN -m conntrack --ctstate INVALID,UNTRACKED -j ACCEPT
 
-  # create a new connection on behalf of LOOPBACK interface: the most strange part ???
-  # where src -> sender (client), dst -> server (fw)
+  # create a new connection in/out LOOPBACK interface (src-ip=client, dest-ip=server): the most strange part
   # to check if the SYNPROXY works: watch -n1 cat /proc/net/stat/synproxy
   iptables -A OUTPUT -o "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m conntrack --ctstate NEW -j LOG --log-prefix "iptables [WAN{NEW}->OUTPUT{lo}]"
 
   iptables -A OUTPUT -o "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
+    -m conntrack --ctstate NEW -j ACCEPT
+
+  iptables -A INPUT -i "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
+    -m conntrack --ctstate NEW -j LOG --log-prefix "iptables [WAN{NEW}->INPUT{lo}]"
+
+  iptables -A INPUT -i "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m conntrack --ctstate NEW -j ACCEPT
 
   printf "${debug_prefix} ${GRN_ROLLUP_IT} Exit the function ${END_ROLLUP_IT}\n"
