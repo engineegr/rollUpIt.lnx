@@ -1,0 +1,31 @@
+---
+
+ns:
+  type: "master"
+  acl:
+    - "localhost"
+    - "localnets"
+    - "172.17.0.0/28"
+  rndc_users:
+    - "172.17.0.132"
+    - "172.17.0.133"
+    - "172.17.0.134"
+  rndc_remote_key: "eU0fcdPwXqhnTu8/7T22YQ=="
+  forward_type: "first"
+  forward_list: 
+    - "172.17.0.129"
+    - "8.8.8.8"
+    - "8.8.4.4"
+  listen_on_list:
+    - "172.17.0.135"
+    - "127.0.0.1"
+  log:
+    path: "/var/log/named"
+  forward_zone:
+    name: "srvfarm.labs.net"
+    path: "/etc/bind/db.srvfarm.labs.net"
+  reverse_zone:
+    name: "0.17.172.in-addr.arpa"
+    path: "/etc/bind/db.srvfarm.labs.net.inv"
+    
+

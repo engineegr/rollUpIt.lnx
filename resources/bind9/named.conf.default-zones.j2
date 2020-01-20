@@ -1,0 +1,35 @@
+{% if not ns.forward_list %}
+#  prime the server with knowledge of the root servers
+#  it makes our server to pass iterative queries to TDL servers
+#  and then uses cache for the same queries 
+#  If we want to setup forwarding server we must comment it
+zone "." {
+	type hint;
+	file "/etc/bind/db.root";
+};
+
+{% endif %}
+#  be authoritative for the localhost forward and reverse zones, and for
+#  broadcast zones as per RFC 1912
+
+zone "localhost" {
+	type master;
+	file "/etc/bind/db.local";
+};
+
+zone "127.in-addr.arpa" {
+	type master;
+	file "/etc/bind/db.127";
+};
+
+zone "0.in-addr.arpa" {
+	type master;
+	file "/etc/bind/db.0";
+};
+
+zone "255.in-addr.arpa" {
+	type master;
+	file "/etc/bind/db.255";
+};
+
+

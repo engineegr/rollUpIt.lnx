@@ -4,4 +4,5 @@
 *.private
 *.key
 .DS_Store
+__pycache__
 tmp

@@ -1,3 +1,0 @@
-server ns01.workhorse.local
-update ntp.workhorse.local add 3600 IN A 10.10.0.4 
-send
