@@ -53,3 +53,20 @@ Use [grc](https://github.com/garabik/grc):
 
 `sudo grep -l mdadm /var/log/*` - `l` is ued to show **paths of files** not matching cases
 
+8. ##### Sed
+
+- multiline matching:
+
+```
+cat ns.yml | sed -rn '/ns:.{0}/{:a;N;/\s{2}rndc_key:/{p;d};ba}'
+```
+
+Sed searches `ns:.{0}` then it appends the next line `{:a;N;}`
+
+- if it matches `\s{2}rndc_key:` it prints then delete the line from the pattern space until the first new line,read the newe line and then restart the cycle
+
+- if it doesn't match the pattern it reads the next line to the patter buffer: `;ba}` - back to the :a mark
+
+>[!See]
+>1. [Multiline technique] (https://vds-admin.ru/sed-and-awk-101-hacks/chapter-7-sed-multi-line-commands-and-loops)
+>2. [Manual sed] (https://www.gnu.org/software/sed/manual/sed.html)

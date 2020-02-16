@@ -780,3 +780,4 @@ DON'T forget to check *path to python* in `grc` and `grcat` executive file:
 
 >[Links]
 >1. [Great Greg's Wiki](https://mywiki.wooledge.org/)
+>2. [Manual reference Bash](http://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#Conditional-Constructs)
