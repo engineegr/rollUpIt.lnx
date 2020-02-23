@@ -2,17 +2,9 @@
 options {
 	directory "/var/cache/bind";
 
-  {% if ns.type == 'slave' %}
 	allow-transfer {
 		none;
 	};
-  {% else %}
- 	allow-transfer {
-		{{ ns.slave_ns_ip }};
-	};
-  notify yes;
-  also-notify { {{ ns.slave_ns_ip }}; };
-  {% endif %}
   
 	allow-query {
 		trusted;
@@ -36,14 +28,12 @@ options {
 	# nameservers, you probably want to use them as forwarders.  
 	# Uncomment the following block, and insert the addresses replacing 
 	# the all-0's placeholder.
-  {% if ns.forward_list %}
-	forward {{ ns.forward_type }};
+	forward first;
 	forwarders {
-    {% for f in ns.forward_list %}
-    {{ f }};
-    {% endfor %}
+    172.17.0.129;
+    8.8.8.8;
+    8.8.4.4;
 	};
-  {% endif %}
 
 	#========================================================================
 	# If BIND logs error messages about the root key being expired,
@@ -54,11 +44,9 @@ options {
   # conform to RFC1035
 	auth-nxdomain no;    
 	
-  listen-on {
-    {%- for l in ns.listen_on_list %} 
-    {{ l }};
-    {%- endfor %}
-    
+  listen-on { 
+    172.17.0.136; 
+    127.0.0.1;    
 	};
 	
   listen-on-v6 { none; };

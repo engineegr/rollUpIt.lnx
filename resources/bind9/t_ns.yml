@@ -2,7 +2,6 @@
 
 ns:
   type: "master"
-  slave_ns_ip: "172.17.0.136"
   acl:
     - "localhost"
     - "localnets"
@@ -12,10 +11,10 @@ ns:
     - "172.17.0.133"
     - "172.17.0.134"
   # to generate a rndc key: /usr/sbin/rndc-confgen > /etc/bind/rndc.conf
-  rndc_key: "nd"
-  rndc_remote_key: "nd"
+  rndc_key: ""
+  rndc_remote_key: ""
   # to generate a nsupdate key: dnssec-keygen -a hmac-md5 -b 128 -n USER dnsupdater 
-  dnsupdate_key: "nd"
+  dnsupdater: ""
   forward_type: "first"
   forward_list: 
     - "172.17.0.129"
@@ -32,5 +31,3 @@ ns:
   reverse_zone:
     name: "0.17.172.in-addr.arpa"
     path: "/etc/bind/db/srvfarm.labs.net/db.inv.srvfarm.labs.net"
-    
-

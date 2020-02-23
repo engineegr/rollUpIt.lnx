@@ -22,16 +22,20 @@ main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  compileConfig_BIND9_RUI
+  # fetchFromFTP_COMMON_RUI
+  prepare_BIND9_RUI
+  # install_BIND9_RUI
+  compileConfig_BIND9_RUI "slave_ns.yml"
+  # deployConfig_BIND9_RUI
 
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
 LOG_FP="$(getShLogName_COMMON_RUI $0)"
 echo "debug ${LOG_FP}"
-if [ ! -e "/var/log/post-scripts" ]; then
-  mkdir "/var/log/post-scripts"
+if [ ! -e "log" ]; then
+  mkdir "log"
 fi
 
-main $@ 2>&1 | tee "/var/log/post-scripts/${LOG_FP}"
+main $@ 2>&1 | tee "log/${LOG_FP}"
 exit 0

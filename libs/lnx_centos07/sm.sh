@@ -29,7 +29,7 @@ doInstallCustoms_SM_RUI() {
     "yum-utils" "kernel-devel" "python-devel" "ncurses" "ncurses-devel"
     "ncurses-libs" "ncurses-base" "python-libs" "cmake3" "sqlite-devel"
     "readline-devel" "tk-devel" "gdbm-devel" "db4-devel"
-    "libpcap-devel" "xz-devel" "libffi-devel"
+    "libpcap-devel" "xz-devel" "libffi-devel" "bind-utils"
   )
 
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""

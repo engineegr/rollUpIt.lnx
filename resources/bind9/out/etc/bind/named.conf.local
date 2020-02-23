@@ -1,0 +1,23 @@
+#
+# Do any local configuration here
+#
+#
+# Consider adding the 1918 zones here, if they are not used in your
+# organization
+include "/etc/bind/zones.rfc1918";
+
+zone "srvfarm.labs.net" {
+  type slave;
+  file "/etc/bind/db/srvfarm.labs.net/db.srvfarm.labs.net";
+  masters { 
+    172.17.0.135;
+  };
+};
+
+zone "0.17.172.in-addr.arpa" {
+  type slave;
+  file "/etc/bind/db/srvfarm.labs.net/db.inv.srvfarm.labs.net";
+  masters { 
+    172.17.0.135;
+  };
+};

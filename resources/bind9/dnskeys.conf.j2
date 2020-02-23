@@ -1,0 +1,4 @@
+key dnsupdater {       
+  algorithm {{ ns.rndc_remote_key.algorithm | default("hmac-md5") }};
+  secret "{{ ns.dnsupdate_key }}";
+};
