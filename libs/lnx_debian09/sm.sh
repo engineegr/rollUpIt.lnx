@@ -28,7 +28,7 @@ doInstallCustoms_SM_RUI() {
     "zlib1g-dev" "libncurses5-dev" "libgdbm-dev" "libnss3-dev" "openssl"
     "libssl-dev" "libreadline-dev" "libffi-dev" "ntpdate" "ruby-dev"
     "libbz2-dev" "libsqlite3-dev" "dbus" "llvm" "libncursesw5-dev"
-    "xz-utils" "tk-dev" "liblzma-dev" "python-openssl"
+    "xz-utils" "tk-dev" "liblzma-dev" "python-openssl" "dnsutils"
   )
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""
 

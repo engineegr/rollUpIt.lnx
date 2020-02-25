@@ -26,7 +26,7 @@ END
 
 cleanCfgDir_LOGGING_RUI() {
   local -r root_rsyslogd_dir="/etc/rsyslog.d"
-  for f in "${root_rsyslogd_dir}/*"; do
+  for f in ${root_rsyslogd_dir}/*; do
     printf "Debug: [$FUNCNAME] file [$f]\n"
     mv "$f" "$f".orig
   done
@@ -42,14 +42,14 @@ deployCfg_LOGGING_RUI() {
   else
     local -r rsyslogd_cfg="resources/logging/rsyslog.conf"
 
-    systemctl stop rsyslogd
+    systemctl stop rsyslog
 
     cleanCfgDir_LOGGING_RUI
     mv "$root_rsyslogd_cfg" "${root_rsyslogd_cfg}.orig"
     cp "$rsyslogd_cfg" "/etc/"
 
     systemctl daemon-reload
-    systemctl start rsyslogd
+    systemctl start rsyslog
   fi
   printf "$debug_prefix ${GRN_ROLLUP_IT} RETURN the function ${END_ROLLUP_IT} \n"
   return $?

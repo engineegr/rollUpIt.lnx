@@ -123,7 +123,7 @@ onErrors_SM_RUI() {
 }
 
 onFailed_SM_RUI() {
-  local -r rc=$1
+  local -r rc="$1"
   local -r msg="$2"
   if [ $1 -ne 0 ]; then
     printf "\n${RED_ROLLUP_IT} $debug_prefix Error: ${msg} ${END_ROLLUP_IT}\n"

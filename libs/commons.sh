@@ -180,7 +180,8 @@ runInBackground_COMMON_RUI() {
   local -r rcmd=$@
 
   # start command
-  printf "${debug_prefix} hostname $(hostname) pwd $(pwd) whoami $(whomai)\n"
+  printf "${debug_prefix} hostname $(hostname) pwd $(pwd) whoami $(whoami)\n"
+
   eval "$rcmd" &>"$ROOT_DIR_ROLL_UP_IT/log/${FUNCNAME}_$(date +%H%M_%Y%m%N)_stdout.log" &
   local -r __pid="$!"
   if [[ ${SUPPRESS_PB_COMMON_RUI} == "FALSE" ]]; then
@@ -249,9 +250,10 @@ runCmdListInBackground_COMMON_RUI() {
     WAIT_CHLD_CMD_IND_COMMON_RUI=$count
 
     if [[ ${SUPPRESS_PB_COMMON_RUI} == "FALSE" ]]; then
-      eval "progressBar "${__epid}" "20" "▇" "100" \"Run command: ${chld_cmd}\"" &
+      progressBar "${__epid}" "20" "▇" "100" "Run command: ${chld_cmd}"
+    else
+      wait ${__epid}
     fi
-    wait ${__epid}
     let ++count
   done
   resetGlobalMarkers_COMMON_RUI
@@ -572,5 +574,29 @@ getSysInfo_COMMON_RUI() {
   echo "${CYN_ROLLUP_IT}${disk_usage_info}${END_ROLLUP_IT}"
 
   printf "\n"
+  printf "\n$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+}
+
+fetchFromFTP_COMMON_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  local -r user_name="${1:-"vagrant"}"
+  local -r ws_path="/usr/local/src/post-scripts"
+  local -r ftp_addr="${2:-"172.17.0.135"}"
+  local -r ftp_user="${3:-"ftp_user"}"
+  local -r ftp_pwd="${4:-"SUPER"}"
+
+  if [ ! -e "${dst_path}" ]; then
+    mkdir -p "${dst_path}"
+  fi
+
+  if [ -e "${ws_path}/rollUpIt.lnx" ]; then
+    rm -Rf "${ws_path}/rollUpIt.lnx"
+  fi
+  cd "${ws_path}"
+  wget -r -l 100 -nv -nH --cut-dir 1 ftp://"${ftp_user}":"${ftp_pwd}"@"${ftp_addr}"/pub/rollUpIt.lnx
+  chown -Rf "${user_name}":"${user_name}" "${ws_path}/rollUpIt.lnx"
+
   printf "\n$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }

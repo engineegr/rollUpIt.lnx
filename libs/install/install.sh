@@ -234,11 +234,14 @@ install_python3_7_INSTALL_RUI() {
         export CFLAGS="${CFLAGS} -I/mnt/sysimage/usr/include/ -I/mnt/sysimage/usr/local/include"
         export LDFLAGS="${LDFLAGS} -L/mnt/sysimage/usr/local/lib/ -L/mnt/sysimage/usr/local/lib"
       fi
+      export LDFLAGS="${LDFLAGS} -Wl,-rpath /usr/local/lib"
+    else
+      export LDFLAGS="-Wl,-rpath /usr/local/lib"
     fi
-    export LDFLAGS="${LDFLAGS} -Wl,-rpath /usr/local/lib"
-    ./configure --enable-optimizations
+    # ./configure --enable-optimizations
+    ./configure
+    make
     make altinstall
-
     rm -rf $tmp_dir
 
     printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
@@ -282,7 +285,7 @@ upgradePip3_7_INSTALL_RUI() {
   local -r pip_path=$(findBin_SM_RUI 'pip3.7')
   if [ -n "${pip_path}" ]; then
     "${pip_path}" install --upgrade pip
-    onFailed_SM_RUI $? "Error: can't upgrade pip [ pip3.7 install --upgrade pip ]"
+    onFailed_SM_RUI "$?" "Error: can not upgrade pip [ pip3.7 install --upgrade pip ]"
   else
     printf "\n ${debug_prefix} ${GRN_ROLLUP_IT} Debug: no pip3.7 has been found ${END_ROLLUP_IT}\n"
   fi

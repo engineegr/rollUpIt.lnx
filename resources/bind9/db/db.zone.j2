@@ -1,0 +1,15 @@
+$TTL  {{ zone.ttl }}
+
+$ORIGIN {{ zone.name }}
+
+@     IN    SOA     {{ zone.ns001_name }}.{{ zone.domain }}.   hostmaster.{{ zone.domain }}. (
+                    {{ zone.serial }} ; serial number
+                    {{ zone.refresh }} ; refresh (the slave tries to refresh the zone)
+                    {{ zone.retry }} ; retry
+                    {{ zone.expiry }} ; expiry (when the zone is no longer authoritative, used by slave server only)
+                    {{ zone.min_cache_ttl }}; minimum cache TTL
+                    )
+                    IN    NS      {{ zone.ns001_name }}.{{ zone.domain }}.
+
+{{ zone.ns001_name }}.{{ zone.domain }}  IN    A   {{ zone.ns001_ip }}   
+

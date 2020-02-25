@@ -4,6 +4,6 @@
 *.private
 *.key
 .DS_Store
+**out/etc/bind
 __pycache__
-out
 tmp

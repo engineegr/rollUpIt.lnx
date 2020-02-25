@@ -1,0 +1,13 @@
+---
+ 
+zone:
+  name: "0.17.172.in-addr.arpa"
+  domain: "srvfarm.labs.net"
+  ns001_last_ip_oct: "135"
+  ns001_name: "ns001"
+  ttl: "3600"
+  serial: "0"
+  refresh: "1d"
+  retry: "3m"
+  expiry: "2w"
+  min_cache_ttl: "3h"

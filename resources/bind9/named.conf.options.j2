@@ -1,0 +1,67 @@
+
+options {
+	directory "/var/cache/bind";
+
+  {% if ns.type == 'slave' %}
+	allow-transfer {
+		none;
+	};
+  {% else %}
+ 	allow-transfer {
+		{{ ns.slave_ns_ip }};
+	};
+  notify yes;
+  also-notify { {{ ns.slave_ns_ip }}; };
+  {% endif %}
+  
+	allow-query {
+		trusted;
+	};
+
+	allow-recursion {
+		trusted;
+	};
+
+	allow-query-cache { 
+		trusted;
+	};
+	
+	# define a caching server
+	recursion yes;
+	# If there is a firewall between you and nameservers you want
+	# to talk to, you may need to fix the firewall to allow multiple
+	# ports to talk.  See http://www.kb.cert.org/vuls/id/800113
+
+	# If your ISP provided one or more IP addresses for stable 
+	# nameservers, you probably want to use them as forwarders.  
+	# Uncomment the following block, and insert the addresses replacing 
+	# the all-0's placeholder.
+  {% if ns.forward_list %}
+	forward {{ ns.forward_type }};
+	forwarders {
+    {% for f in ns.forward_list %}
+    {{ f }};
+    {% endfor %}
+	};
+  {% endif %}
+
+	#========================================================================
+	# If BIND logs error messages about the root key being expired,
+	# you will need to update your keys.  See https://www.isc.org/bind-keys
+	#========================================================================
+	dnssec-validation auto;
+  
+  # conform to RFC1035
+	auth-nxdomain no;    
+	
+  listen-on {
+    {%- for l in ns.listen_on_list %} 
+    {{ l }};
+    {%- endfor %}
+    
+	};
+	
+  listen-on-v6 { none; };
+	version none;
+};
+

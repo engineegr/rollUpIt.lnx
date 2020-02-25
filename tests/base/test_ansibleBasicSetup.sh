@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -o errexit
-set -o xtrace
+# set -o xtrace
 set -o nounset
 
 ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
@@ -28,12 +28,12 @@ fi
 #: Suppress progress bar
 #: It is used in case of the PXE installation
 #:
-SUPPRESS_PB_COMMON_RUI="TRUE"
+SUPPRESS_PB_COMMON_RUI="FALSE"
 
 #:
 #: PXE is not able to operate the systemd during installation
 #:
-PXE_INSTALLATION_SM_RUI="TRUE"
+PXE_INSTALLATION_SM_RUI="FALSE"
 
 trap "onInterruption_COMMON_RUI $? $LINENO $BASH_COMMAND" ERR EXIT SIGHUP SIGINT SIGTERM SIGQUIT RETURN
 
@@ -41,22 +41,18 @@ main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
-  local user_name="gonzo"
+  local user_name="${1:-"gonzo"}"
   local -r pwd='saAWeCFm03FjY'
   local home_dir="nd"
 
-  if [[ -n $1 ]]; then
-    user_name="$1"
-  else
-    printf "${debug_prefix} ${GRN_ROLLUP_IT} No username passed. Let's use a default value (gonzo) ${END_ROLLUP_IT}"
-  fi
   [[ "${user_name}" == "root" ]] && home_dir="/root" || home_dir="/home/${user_name}"
 
   installPackages_SM_RUI
   baseSetup_SM_RUI
+  prepareUser_SM_RUI "$user_name" "$pwd"
 
   if [ ! -d "${home_dir}" ]; then
-    onFailed_SM_RUI "Error: there is no home dir for the user (${user_name})"
+    onFailed_SM_RUI "-1" "Error: there is no home dir for the user (${user_name})"
     exit 1
   fi
   ln -sf "${ROOT_DIR_ROLL_UP_IT}" "${home_dir}/rui"
@@ -67,7 +63,6 @@ if [ -f "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh" ]; then
   "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh"
 fi
 EOF
-  prepareUser_SM_RUI "$user_name" "$pwd"
 
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
