@@ -20,8 +20,11 @@ main() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n\n"
 
-  clrsScreen_TTY_RUI
-  getSysInfo_COMMON_RUI
+  # clrsScreen_TTY_RUI
+
+  colrow_pos_TTY_RUI
+
+  # getSysInfo_COMMON_RUI
 
   printf "\n\n$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }

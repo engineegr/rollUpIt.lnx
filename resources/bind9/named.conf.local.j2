@@ -9,11 +9,27 @@ include "/etc/bind/zones.rfc1918";
 zone "{{ ns.forward_zone.name }}" {
   type {{ ns.type }};
   file "{{ ns.forward_zone.path }}";
-  allow-update { key "rndc-key"; };
-}
+  {% if ns.type == 'slave' %}
+  masters { 
+  {% for m in ns.masters %}
+    {{ m }};
+  {% endfor %}
+  };
+  {% else %}
+  allow-update { key "dnsupdater"; };
+  {% endif %}
+};
 
 zone "{{ ns.reverse_zone.name }}" {
   type {{ ns.type }};
   file "{{ ns.reverse_zone.path }}";
-  allow-update { key "rndc-key"; };
-}
+  {% if ns.type == 'slave' %}
+  masters { 
+  {% for m in ns.masters %}
+    {{ m }};
+  {% endfor %}
+  };
+  {% else %}
+  allow-update { key "dnsupdater"; };
+  {% endif %}
+};

@@ -1,8 +1,9 @@
 ---
 
 ns:
-  type: "master"
-  slave_ns_ip: "172.17.0.136"
+  type: "slave"
+  masters:
+    - "172.17.0.135"
   acl:
     - "localhost"
     - "localnets"
@@ -22,7 +23,7 @@ ns:
     - "8.8.8.8"
     - "8.8.4.4"
   listen_on_list:
-    - "172.17.0.135"
+    - "172.17.0.136"
     - "127.0.0.1"
   log:
     path: "/var/log/named"

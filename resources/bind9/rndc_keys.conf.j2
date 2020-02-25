@@ -1,0 +1,11 @@
+key rndc-key {
+  algorithm {{ ns.rndc_remote_key.algorithm | default("hmac-md5") }};
+  secret "{{ ns.rndc_key }}";
+};
+
+key rndc-remote-key {
+  algorithm {{ ns.rndc_remote_key.algorithm | default("hmac-md5") }};
+  secret "{{ ns.rndc_remote_key }}";
+};
+
+
