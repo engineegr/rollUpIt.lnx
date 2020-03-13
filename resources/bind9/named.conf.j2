@@ -35,7 +35,7 @@ acl rndc-users {
 
 controls {
   inet 127.0.0.1 port 953 allow {localhost;} keys {rndc-key;};
-	inet *  port 7766  allow {rndc-users;} keys {rndc-remote-key;};
+  inet *  port 7766  allow {rndc-users;} keys {rndc-remote-key;};
 };
 
 
