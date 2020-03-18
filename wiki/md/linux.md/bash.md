@@ -3,7 +3,7 @@
 
 0. ##### Основы
 
-    **0.1 Логические операции в `if [ ]; then fi`**
+    0.1 **Логические операции в `if [ ]; then fi`**
 
     `-z`- строка пуста
 
@@ -103,7 +103,7 @@
 
     `var1 -ne var2`- Is the first variable not equal to the second variable?
 
-    **0.2 Use `&&` and `||`**
+    0.2 **Use `&&` and `||`**
 
     ```
     if [ $condition1 ] && [ $condition2 ] then
@@ -130,11 +130,11 @@
     [ $# -ge 3 ] && echo "There are at least 3 command line arguments."
     ```
 
-[!Important]
->1. The [ command is an ordinary command. Although most shells provide it as a built-in for efficiency, it obeys the shell's normal syntactic rules. `[` is exactly equivalent to test, except that `[` requires a `]` as its last argument and test doesn't. **Inside single brackets**, you need to use double quotes around variable substitutions, like in most other places, because they're just arguments to a command (which happens to be the `[`command). Inside double brackets, you don't need double quotes, because the shell doesn't do word splitting or globbing: it's parsing a conditional expression, not a command.
+    [!Important]
+    >1. The [ command is an ordinary command. Although most shells provide it as a built-in for efficiency, it obeys the shell's normal syntactic rules. `[` is exactly equivalent to test, except that `[` requires a `]` as its last argument and test doesn't. **Inside single brackets**, you need to use double quotes around variable substitutions, like in most other places, because they're just arguments to a command (which happens to be the `[`command). Inside double brackets, you don't need double quotes, because the shell doesn't do word splitting or globbing: it's parsing a conditional expression, not a command.
 
-**0.3 Резервные переменные:**
-    
+    0.3 **Резервные переменные:**    
+
     `$DIRSTACK`- содержимое вершины стека каталогов
 
     `$EDITOR`- текстовый редактор по умолчанию
@@ -164,7 +164,7 @@
     `$PPID`- идентификатор родительского процесса
 
     `$SECONDS`- время работы скрипта(в сек.)
-    
+
     `$#`- общее количество параметров переданных скрипту
 
     `$*`- все аргументы переданыне скрипту(выводятся в строку)
@@ -178,27 +178,28 @@
     `$?`- Код выход предыдущей каманды (exit status)
 
     0.4 **Strings**
+    To compare two string use "=="        
 
-    To compare two string use "=="
-    ```
-    if [[ "$stringA" == "$stringB" ]]; then
-      # Do something here
-    else
-      # Do Something here
-    fi
-    ```
+        ```
+            if [[ "$stringA" == "$stringB" ]]; then
+              # Do something here
+            else
+              # Do Something here
+            fi
+        ```
 
     To conc strings:
-    ```
-    # var01="A"
-    # var02="B"
-    # res=$var01$var02 
-    or
-    # res+=$var01
-    # res+=$var02
-    ```
 
-0.5 **Functions**
+            ```
+            # var01="A"
+            # var02="B"
+            # res=$var01$var02 
+            or
+            # res+=$var01
+            # res+=$var02
+            ```
+
+    0.5 **Functions**
 
     About `FUNCNAME`
 
@@ -208,10 +209,10 @@
       shell  function  is  executing.  Assignments to FUNCNAME have no
       effect and return an error status.  If  FUNCNAME  is  unset,  it
       loses its special properties, even if it is subsequently reset.
- 
+
     `$?` reads the exit status of the last command executed. After a function returns, `$?` gives the exit status of the last command executed in the function.
 
-0.6 **Variables**
+    0.6 **Variables**
 
     [See more here](https://mywiki.wooledge.org/BashFAQ/073)
 
@@ -240,208 +241,214 @@
     NAME=${FILE%.*} — NAME becomes myfile
     ```
 
-**0.7 Arithmetic operations**
+    **0.7 Arithmetic operations**
+
     Example 004. Basic
-```
-    #!/bin/bash
-    # Counting to 11 in 10 different ways.
+    ```
+        #!/bin/bash
+        # Counting to 11 in 10 different ways.
 
-    n=1; echo -n "$n "
+        n=1; echo -n "$n "
 
-    let "n = $n + 1"   # let "n = n + 1"  also works.
-    echo -n "$n "
+        let "n = $n + 1"   # let "n = n + 1"  also works.
+        echo -n "$n "
 
-    : $((n = $n + 1))
-    # ":" necessary because otherwise Bash attempts
-    # + to interpret "$((n = $n + 1))" as a command.
-    echo -n "$n "
+        : $((n = $n + 1))
+        # ":" necessary because otherwise Bash attempts
+        # + to interpret "$((n = $n + 1))" as a command.
+        echo -n "$n "
 
-    (( n = n + 1 ))
-    #  A simpler alternative to the method above.
-    #  Thanks, David Lombard, for pointing this out.
-    echo -n "$n "
+        (( n = n + 1 ))
+        #  A simpler alternative to the method above.
+        #  Thanks, David Lombard, for pointing this out.
+        echo -n "$n "
 
-    n=$(($n + 1))
-    echo -n "$n "
+        n=$(($n + 1))
+        echo -n "$n "
 
-    : $[ n = $n + 1 ]
-    # ":" necessary because otherwise Bash attempts
-    # + to interpret "$[ n = $n + 1 ]" as a command.
-    #  Works even if "n" was initialized as a string.
-    echo -n "$n "
+        : $[ n = $n + 1 ]
+        # ":" necessary because otherwise Bash attempts
+        # + to interpret "$[ n = $n + 1 ]" as a command.
+        #  Works even if "n" was initialized as a string.
+        echo -n "$n "
 
-    n=$[ $n + 1 ]
-    #  Works even if "n" was initialized as a string.
-    #* Avoid this type of construct, since it is obsolete and nonportable.
-    #  Thanks, Stephane Chazelas.
-    echo -n "$n "
+        n=$[ $n + 1 ]
+        #  Works even if "n" was initialized as a string.
+        #* Avoid this type of construct, since it is obsolete and nonportable.
+        #  Thanks, Stephane Chazelas.
+        echo -n "$n "
+        ```
+
+        Example 005. Incrementation
+        ```
+        # Now for C-style increment operators.
+        # Thanks, Frank Wang, for pointing this out.
+
+        let "n++"          # let "++n"  also works.
+        echo -n "$n "
+
+        (( n++ ))          # (( ++n ))  also works.
+        echo -n "$n "
+
+        : $(( n++ ))       # : $(( ++n )) also works.
+        echo -n "$n "
+
+        : $[ n++ ]         # : $[ ++n ] also works
+        echo -n "$n "
+
+        exit 0
     ```
 
-    Example 005. Incrementation
+    Example 006. Compound operations
     ```
-    # Now for C-style increment operators.
-    # Thanks, Frank Wang, for pointing this out.
+        #!/bin/bash
 
-    let "n++"          # let "++n"  also works.
-    echo -n "$n "
+        a=24
+        b=47
 
-    (( n++ ))          # (( ++n ))  also works.
-    echo -n "$n "
+        if [ "$a" -eq 24 ] && [ "$b" -eq 47 ]
+        then
+          echo "Test #1 succeeds."
+        else
+          echo "Test #1 fails."
+        fi
 
-    : $(( n++ ))       # : $(( ++n )) also works.
-    echo -n "$n "
-
-    : $[ n++ ]         # : $[ ++n ] also works
-    echo -n "$n "
-
-    exit 0
-```
-
-Example 006. Compound operations
-```
-    #!/bin/bash
-
-    a=24
-    b=47
-
-    if [ "$a" -eq 24 ] && [ "$b" -eq 47 ]
-    then
-      echo "Test #1 succeeds."
-    else
-      echo "Test #1 fails."
-    fi
-
-    # ERROR:   if [ "$a" -eq 24 && "$b" -eq 47 ]
-    #+         attempts to execute  ' [ "$a" -eq 24 '
-    #+         and fails to finding matching ']'.
-    #
-    #  Note:  if [[ $a -eq 24 && $b -eq 24 ]]  works.
-    #  The double-bracket if-test is more flexible
-    #+ than the single-bracket version.       
-    #    (The "&&" has a different meaning in line 17 than in line 6.)
-    #    Thanks, Stephane Chazelas, for pointing this out.
+        # ERROR:   if [ "$a" -eq 24 && "$b" -eq 47 ]
+        #+         attempts to execute  ' [ "$a" -eq 24 '
+        #+         and fails to finding matching ']'.
+        #
+        #  Note:  if [[ $a -eq 24 && $b -eq 24 ]]  works.
+        #  The double-bracket if-test is more flexible
+        #+ than the single-bracket version.       
+        #    (The "&&" has a different meaning in line 17 than in line 6.)
+        #    Thanks, Stephane Chazelas, for pointing this out.
 
 
-    if [ "$a" -eq 98 ] || [ "$b" -eq 47 ]
-    then
-      echo "Test #2 succeeds."
-    else
-      echo "Test #2 fails."
-    fi
+        if [ "$a" -eq 98 ] || [ "$b" -eq 47 ]
+        then
+          echo "Test #2 succeeds."
+        else
+          echo "Test #2 fails."
+        fi
 
-    #  The -a and -o options provide
-    #+ an alternative compound condition test.
-    #  Thanks to Patrick Callahan for pointing this out.
+        #  The -a and -o options provide
+        #+ an alternative compound condition test.
+        #  Thanks to Patrick Callahan for pointing this out.
 
-    if [ "$a" -eq 24 -a "$b" -eq 47 ]
-    then
-      echo "Test #3 succeeds."
-    else
-      echo "Test #3 fails."
-    fi
+        if [ "$a" -eq 24 -a "$b" -eq 47 ]
+        then
+          echo "Test #3 succeeds."
+        else
+          echo "Test #3 fails."
+        fi
 
-    if [ "$a" -eq 98 -o "$b" -eq 47 ]
-    then
-      echo "Test #4 succeeds."
-    else
-      echo "Test #4 fails."
-    fi
-```
+        if [ "$a" -eq 98 -o "$b" -eq 47 ]
+        then
+          echo "Test #4 succeeds."
+        else
+          echo "Test #4 fails."
+        fi
+    ```
 
-**0.8 How to run bash-code in command line**
+    **0.8 How to run bash-code in command line**
 
-    `# sh -c 'if( test -e /Users ); then echo Exists; else echo Not Exists; fi'`
+    ```
+        # sh -c 'if( test -e /Users ); then echo Exists; else echo Not Exists; fi'
+        # sh -c '[[ -e /Users ]] && ( echo Exists; ) || ( echo Not Exists; )'
+        # sh -c 'for (( i = 0; i < 10; i++ )); do echo test $i; done'
+    ```
 
-    `# sh -c '[[ -e /Users ]] && ( echo Exists; ) || ( echo Not Exists; )' `
+    **0.9 Some tips**
 
-**0.9 Some tips**
     - `fc` - Returns text of the last command in the editor
+        
     - `find / -perm -a=x -print0 | xargs -0 ls -la` - When you are writing scripts, a useful weapon to know about is find’s `-print0` option. In combination with `xargs -0`, this option makes the find/xargs combination **work correctly regardless of the whitespace contained within filenames**.
+        
     - Use the following construction to produce multiple strings in a file or variable:
 
-Example 09.1
-```
-  cat <<EOFF >$cfg_fp
-# TODO: insert a common options
-authoritative;
-log-facility local7;
+    Example 09.1
+    ```
+      cat <<EOFF >$cfg_fp
+    # TODO: insert a common options
+    authoritative;
+    log-facility local7;
 
-# allow it in a specific pool
-deny bootp;
-deny booting;
+    # allow it in a specific pool
+    deny bootp;
+    deny booting;
 
-$([ "${domain_name}" = "#nd" ] && echo '' || echo "option domain-name \"${domain_name}\";")
-$([ -z "$ns_str" ] && echo '' || echo "$ns_str")
-$([ "${opt_broadcast}" = '#nd' ] && echo '' || echo "option broadcast-address ${opt_broadcast};")
-$([ "${opt_router}" = '#nd' ] && echo '' || echo "option routers ${opt_router};")
-$([ "${opt_subnetmask}" = '#nd' ] && echo '' || echo "option subnet-mask ${opt_subnetmask};")
+    $([ "${domain_name}" = "#nd" ] && echo '' || echo "option domain-name \"${domain_name}\";")
+    $([ -z "$ns_str" ] && echo '' || echo "$ns_str")
+    $([ "${opt_broadcast}" = '#nd' ] && echo '' || echo "option broadcast-address ${opt_broadcast};")
+    $([ "${opt_router}" = '#nd' ] && echo '' || echo "option routers ${opt_router};")
+    $([ "${opt_subnetmask}" = '#nd' ] && echo '' || echo "option subnet-mask ${opt_subnetmask};")
 
-$([ "${def_lease}" = '#nd' ] && echo '' || echo "default-lease-time ${def_lease};")
-$([ "${max_lease}" = '#nd' ] && echo '' || echo "max-lease-time ${max_lease};")
+    $([ "${def_lease}" = '#nd' ] && echo '' || echo "default-lease-time ${def_lease};")
+    $([ "${max_lease}" = '#nd' ] && echo '' || echo "max-lease-time ${max_lease};")
 
-EOFF
-```
+    EOFF
+    ```
 
-In relating to a variable:
+    In relating to a variable:
 
-Example 09.2. We have to add '\n' and option `-e` to **echo**
-```
-    local subnet_cfg_str=$(
-      cat <<EOF
-subnet ${subnet} netmask ${subnetmask} {
-  pool {
-    range ${unfold_addr_01} ${unfold_addr_02};
-    $([ "${def_router}" = '#nd' ] && echo '' || echo "option routers ${def_router};")
-EOF
-    )
-    if [[ "$next_srv" != '#nd' && "$filename" != '#nd' ]]; then
-      subnet_cfg_str="$subnet_cfg_str\n$(
-        cat <<-EOF
-    next-server ${next_srv};
-    filename "${filename}";
-  }
-}
-EOF
-echo -e "$subnet_cfg_str" >>$cfg_fp
-```
-
-Appending a minus sign to the redirection operator `<<-`, will cause all leading tab characters to be ignored. This allows you to use indentation when writing here-documents in shell scripts. Leading whitespace characters are not allowed, only tab. If you are using a heredoc inside a statement or loop, use the `<<-` redirection operation that allows you to indent your code.
-
-Example 09.3
-
-```
-if true; then
-    cat <<- EOF
-    Line with a leading tab.
+    Example 09.2. We have to add '\n' and option `-e` to **echo**
+    ```
+        local subnet_cfg_str=$(
+          cat <<EOF
+    subnet ${subnet} netmask ${subnetmask} {
+      pool {
+        range ${unfold_addr_01} ${unfold_addr_02};
+        $([ "${def_router}" = '#nd' ] && echo '' || echo "option routers ${def_router};")
     EOF
-fi
-```
+        )
+        if [[ "$next_srv" != '#nd' && "$filename" != '#nd' ]]; then
+          subnet_cfg_str="$subnet_cfg_str\n$(
+            cat <<-EOF
+        next-server ${next_srv};
+        filename "${filename}";
+      }
+    }
+    EOF
+    echo -e "$subnet_cfg_str" >>$cfg_fp
+    ```
 
-**0.10 About regexp**
-    
-Since parentheses can nest, how do you know which match is which? Easy: the matches arrive in the same order as the opening parentheses. There are as many captures as there are opening parentheses, regardless of the role (or lack of role) that each parenthesized group played in the actual matching. When a parenthe- sized group is not used (e.g., Mu(')?ammar when matched against “Muammar”), its corresponding capture is empty.
+    Appending a minus sign to the redirection operator `<<-`, will cause all leading tab characters to be ignored. This allows you to use indentation when writing here-documents in shell scripts. Leading whitespace characters are not allowed, only tab. If you are using a heredoc inside a statement or loop, use the `<<-` redirection operation that allows you to indent your code.
 
-If a group is matched more than once, the contents of **only the last match are returned**. For example, with the pattern
-`(I am the (walrus|egg man)\. ?){1,2}` - matching the text
-*I am the egg man. I am the walrus.*
-there are two results, one for each set of parentheses:
-*I am the walrus.     
-walrus*
+    Example 09.3
 
-Both capture groups actually matched twice. However, only **the last text**to match each set of parentheses is actually captured.
-**By default**, reg expressions use greedy algorithm of matching:
-`<head .*> </head>` - firstly it matches all from `<head` to the end but using backtracking it goes back up to `/>` and it is not very fast method. Instead we can define the expression as that: `<head[^>]*></head>` or use the lazy form: `<head.*?></head>`. So that prefer **lazy** technique to greedy.
+    ```
+    if true; then
+        cat <<- EOF
+        Line with a leading tab.
+        EOF
+    fi
+    ```
 
-**Lazy (as opposed to greedy)** wild card operators: *? instead of *, and +? instead of +. These versions match as few characters of the input as they can. If that fails, they match more. In many situations, these operators are more efficient and closer to what you want than the greedy versions.
+    **0.10 About regexp**
+        
+    Since parentheses can nest, how do you know which match is which? Easy: the matches arrive in the same order as the opening parentheses. There are as many captures as there are opening parentheses, regardless of the role (or lack of role) that each parenthesized group played in the actual matching. When a parenthe- sized group is not used (e.g., Mu(')?ammar when matched against “Muammar”), its corresponding capture is empty.
 
-**Built-in regular expressions** are naughty: we shouln't use single and double quotes in conditions:
-```
-   if [[ ! "$def_lease" =~ ^([[:digit:]]*)$ ]]; then
-     printf "$debug_prefix ${RED_ROLLUP_IT} Error: Invalid default lease: it must be a digit.\nSee help${END_ROLLUP_IT}\n" >&2
-     help_DHCPSRV_RUI
-     exit 1
-   fi
-```
+    If a group is matched more than once, the contents of **only the last match are returned**. For example, with the pattern
+    `(I am the (walrus|egg man)\. ?){1,2}` - matching the text
+    *I am the egg man. I am the walrus.*
+    there are two results, one for each set of parentheses:
+    *I am the walrus.     
+    walrus*
+
+    Both capture groups actually matched twice. However, only **the last text**to match each set of parentheses is actually captured.
+    **By default**, reg expressions use greedy algorithm of matching:
+    `<head .*> </head>` - firstly it matches all from `<head` to the end but using backtracking it goes back up to `/>` and it is not very fast method. Instead we can define the expression as that: `<head[^>]*></head>` or use the lazy form: `<head.*?></head>`. So that prefer **lazy** technique to greedy.
+
+    **Lazy (as opposed to greedy)** wild card operators: *? instead of *, and +? instead of +. These versions match as few characters of the input as they can. If that fails, they match more. In many situations, these operators are more efficient and closer to what you want than the greedy versions.
+
+    **Built-in regular expressions** are naughty: we shouln't use single and double quotes in conditions:
+    ```
+       if [[ ! "$def_lease" =~ ^([[:digit:]]*)$ ]]; then
+         printf "$debug_prefix ${RED_ROLLUP_IT} Error: Invalid default lease: it must be a digit.\nSee help${END_ROLLUP_IT}\n" >&2
+         help_DHCPSRV_RUI
+         exit 1
+       fi
+    ```
 
 1. ##### Check a variable type: user `declare`
 
@@ -777,6 +784,16 @@ DON'T forget to check *path to python* in `grc` and `grcat` executive file:
 ```
 #! /usr/bin/env python3.7
 ```
+
+8. ##### How to generate multiple text files and fill them within random data?
+
+    One liner:
+
+    `sudo sh -c 'cd /mnt/DATA; for (( i = 0; i < 10; i++ )); do touch test_$i.txt && head -n 1 /dev/urandom > test_$i.txt; done'`
+
+    Read:
+
+    `sudo sh -c 'cd /mnt/DATA; for f in /mnt/DATA/*.txt; do echo $f; echo content: $(cat $f); echo ""; done'`
 
 >[Links]
 >1. [Great Greg's Wiki](https://mywiki.wooledge.org/)

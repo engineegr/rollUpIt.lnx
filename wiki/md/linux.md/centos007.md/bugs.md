@@ -52,3 +52,7 @@ Solution: Change video graphic controller to VBoxVGA
 
 Solution: Edit /usr/lib/udev/rules.d/59-fc-wwpn-id.rules - replace *;* with *,*
 [link](https://bugzilla.redhat.com/show_bug.cgi?id=1750417)
+
+7. ##### fdisk: WARNING: Re-reading the partition table failed with error 16: Устройство или ресурс занято.
+
+Just run `partprobe`
