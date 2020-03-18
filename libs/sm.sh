@@ -90,16 +90,17 @@ skeletonUserHome_SM_RUI() {
       exit 1
     fi
 
-    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
-    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
-    python install.py --clang-completer
-    rc="$?"
-    if [ "$rc" -ne 0 ]; then
-      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
-      exit 1
-    fi
-  else
-    printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
+#    refused to use YouCompleteMe because of error "Unavailable: unable to load Python": https://github.com/ycm-core/YouCompleteMe/issues/3323
+#    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
+#    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
+#    python install.py --clang-completer
+#    rc="$?"
+#    if [ "$rc" -ne 0 ]; then
+#      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
+#      exit 1
+#    fi
+else
+  printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
   fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
@@ -131,20 +132,6 @@ onFailed_SM_RUI() {
   fi
 }
 
-prepareSkel_SM_RUI() {
-  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix enter the \n"
-
-  if [[ -n "$SKEL_DIR_ROLL_UP_IT" && -d "$SKEL_DIR_ROLL_UP_IT" ]]; then
-    printf "$debug_prefix Skel dir existst: $SKEL_DIR_ROLL_UP_IT \n"
-    find /etc/skel/ -mindepth 1 -maxdepth 1 | xargs rm -Rf
-    rsync -rtvu --delete $SKEL_DIR_ROLL_UP_IT/ /etc/skel
-  else
-    printf "${RED_ROLLUP_IT} $debug_prefix Error skel dir doesn't exist ${END_ROLLUP_IT} \n" >&2
-    exit 1
-  fi
-}
-
 prepareSudoersd_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix enter \n"
@@ -156,7 +143,7 @@ prepareSudoersd_SM_RUI() {
   local -r sudoers_file="/etc/sudoers"
   local -r sudoers_addon="/etc/sudoers.d/local_admgr_add"
   local -r sudoers_templ="$(
-    cat <<-EOF
+  cat <<-EOF
 User_Alias	LOCAL_ADM_GROUP = $1
 
 # Run any command on any hosts but you must log in
@@ -164,28 +151,28 @@ User_Alias	LOCAL_ADM_GROUP = $1
 
 LOCAL_ADM_GROUP ALL=(ALL)ALL
 EOF
-  )"
-  if [[ ! -f $sudoers_addon ]]; then
-    touch $sudoers_addon
-    echo "$sudoers_templ" >$sudoers_addon
-    chmod 0440 ${sudoers_addon}
-  else
-    # add new user
-    local replace_str=""
-    replace_str=$(echo "$sudoers_templ" | awk -v user_name="$1" '/^User_Alias/ {
+)"
+if [[ ! -f $sudoers_addon ]]; then
+  touch $sudoers_addon
+  echo "$sudoers_templ" >$sudoers_addon
+  chmod 0440 ${sudoers_addon}
+else
+  # add new user
+  local replace_str=""
+  replace_str=$(echo "$sudoers_templ" | awk -v user_name="$1" '/^User_Alias/ {
   print $0","user_name
 }')
 
-    if [[ -n "replace_str" ]]; then
-      # - to write to a file: use -i option
-      # - to use shell variables use double qoutes
-      sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
-      sed -i "s/^\#\s*\#includedir\s*\/etc\/sudoers\.d\s*$/\#includedir \/etc\/sudoers\.d/g" $sudoers_file
-    else
-      printf "$debug_prefix Error Can't find User_Alias string\n"
-      exit 1
-    fi
-  fi
+if [[ -n "replace_str" ]]; then
+  # - to write to a file: use -i option
+  # - to use shell variables use double qoutes
+  sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
+  sed -i "s/^\#\s*\#includedir\s*\/etc\/sudoers\.d\s*$/\#includedir \/etc\/sudoers\.d/g" $sudoers_file
+  else
+    printf "$debug_prefix Error Can't find User_Alias string\n"
+    exit 1
+fi
+fi
 }
 
 #:
@@ -209,8 +196,8 @@ createAdmUser_SM_RUI() {
     fi
 
     printf "debug: [ $0 ] There is no [ $user_name ] user, let's create him \n"
-    adduser $1 --gecos "$1" --disabled-password
-    # adduser "$user_name" 2>log/stderr.log
+    # adduser $1 --gecos "$1" --disabled-password # not CentOS compatible
+    adduser $1 
     rc=$?
     if [[ $rc -ne 0 ]]; then
       printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ adduser $1 --gecos "$1" --disabled-password ]${END_ROLLUP_IT}" >&2
@@ -387,18 +374,19 @@ installPackages_SM_RUI() {
 
 preparePythonEnv_SM_RUI() {
   upgradePip3_7_INSTALL_RUI
-  install_virtualenvwrapper_INSTALL_RUI
-  pip3.7 install Pygments
+  install_virtualenvwrapper_INSTALL_RUI  
+  local -r pip_bin="$(findBin_SM_RUI 'pip3.7')"
+  "${pip_bin}" install Pygments
 }
 
 installDefaults_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-  local -r def_pkg_list=(
-    "make" "ntp" "gcc" "git-core" "sudo" "git" "tcpdump" "wget" "lsof" "net-tools" "curl"
-    "python" "python-pip"
-  )
+  local -r def_pkg_list=( "make" "ntp" "gcc" "git-core" "sudo" 
+  "git" "tcpdump" "wget" "lsof" 
+  "net-tools" "curl" "python" "python-pip")
+
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI def_pkg_list \"\""
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
@@ -476,22 +464,9 @@ setupNtpd_SM_RUI() {
     ntp_service_name="ntp"
   fi
 
-  #  if [ "${PXE_INSTALLATION_SM_RUI}" == "FALSE" ]; then
-  #    systemctl stop ${ntp_service_name}
-  #    onFailed_SM_RUI $? "Error: can't stop ntpd with [systemctl stop ntpd]. Exit."
-  #  fi
   systemctl stop ${ntp_service_name}
   onFailed_SM_RUI $? "Error: can't stop ntpd with [systemctl stop ntpd]. Exit."
 
-  #  if [[ "${PXE_INSTALLATION_SM_RUI}" == "FALSE" ]]; then
-  #    timedatectl set-timezone "Asia/Sakhalin"
-  #    onFailed_SM_RUI $? "Error: can't timezone [timedatectl set-timezone \"Asia/Sakhalin\"]. Exit."
-  #    systemctl enable ${ntp_service_name}
-  #    onFailed_SM_RUI $? "Error: can't stop ntpd with [systemctl stop ntpd]. Exit."
-  #  else
-  #    ln -sf "/usr/share/zoneinfo/Asia/Sakhalin" "/etc/localtime"
-  #    ln -sf "/lib/systemd/system/${ntp_service_name}.service" "/etc/systemd/system/multi-user.target.wants/${ntp_service_name}.service"
-  #  fi
   timedatectl set-timezone "Asia/Sakhalin"
   onFailed_SM_RUI $? "Error: can't timezone [timedatectl set-timezone \"Asia/Sakhalin\"]. Exit."
   systemctl enable ${ntp_service_name}
@@ -519,15 +494,6 @@ EOF
     onFailed_SM_RUI $? "Error: can't synchronize time with [ntpd -qa]. Exit."
   fi
 
-  #  if [[ "${PXE_INSTALLATION_SM_RUI}" == "FALSE" ]]; then
-  #    systemctl start ${ntp_service_name}
-  #    onFailed_SM_RUI $? "Error: can't start ntpd with [systemctl start ntpd]. Exit."
-  #    rc=$?
-  #    if [[ $rc -ne 0 ]]; then
-  #      printf "$debug_prefix ${RED_ROLLUP_IT} Error: can't start ntpd with [systemctl start ntpd]. Exit. ${END_ROLLUP_IT} \n"
-  #      exit 1
-  #    fi
-  #  fi
   systemctl start ${ntp_service_name}
   onFailed_SM_RUI $? "Error: can't start ntpd with [systemctl start ntpd]. Exit."
   rc=$?
@@ -555,7 +521,8 @@ setupPip_SM_RUI() {
 
   upgradePip3_7_INSTALL_RUI
   install_virtualenvwrapper_INSTALL_RUI
-  pip3.7 install Pygments
+  local -r pip_bin="$(findBin_SM_RUI 'pip3.7')"
+  "${pip_bin}" install Pygments
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }

@@ -47,6 +47,9 @@ main() {
 
   [[ "${user_name}" == "root" ]] && home_dir="/root" || home_dir="/home/${user_name}"
 
+  # unless Progress Bar won't work
+  yum -y install bc
+
   installPackages_SM_RUI
   baseSetup_SM_RUI
   prepareUser_SM_RUI "$user_name" "$pwd"
@@ -64,7 +67,7 @@ if [ -f "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh" ]; then
 fi
 EOF
 
-  printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
+printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
 if [ ! -e "${ROOT_DIR_ROLL_UP_IT}/log" ]; then
