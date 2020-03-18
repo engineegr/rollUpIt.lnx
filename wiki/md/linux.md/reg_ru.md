@@ -14,6 +14,8 @@
 
     `iostat -xd 2 3`
 
+    More obvious explanation: https://www.itworld.com/article/2833435/how-to-interpret-cpu-load-on-linux.html
+
 2. ##### Каким образом можно гарантированно ограничить каждого пользователя виртуального хостинга от выедания им всех ресурсов cpu и памяти linux сервера, учитывая что mod_php/mod_perl не установлены?
 
     Мы можем воспользоваться механизмом Control Group/s, который являются основой реализации Linux контейнеров (LXC):

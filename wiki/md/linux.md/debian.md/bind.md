@@ -110,6 +110,13 @@
 
   - To check status: `rndc -c ./rndc.conf status`
 
+4. ##### How to run login shell session on behalf of an user?
+
+    Use `su` command: `su - Jho`
+
+    Login mode runs `~/.bash_profile` 
+
+
 >[!Notes]
 >1. [NXDOMAIN redirect](https://kb.isc.org/docs/aa-00376)
 >2. [NXDOMAIN](https://www.dnsknowledge.com/whatis/nxdomain-non-existent-domain-2/)

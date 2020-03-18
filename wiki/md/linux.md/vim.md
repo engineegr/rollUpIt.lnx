@@ -356,9 +356,83 @@ Installation: `Plugin 'Valloric/YouCompleteMe'`
 Compile (use a reference python exe (not compiled one)):
 `python install.py --clang-completer` where install.py locates in *.vim/bundle/YouCompleteMe*
 
+Dependencies: `yum -y install cmake gcc-c++`
+Alternatives: https://dky.io/post/how-to-build-vim-7.4-with-lua-support-on-centos-7/
+
 >[!link]
 >1. [Setup vim for python develop] (https://realpython.com/vim-and-python-a-match-made-in-heaven/#auto-complete)
 
+14. ##### Compile from source
 
+- Prepare make env:
 
+```
+yum -y install gcc make cmake ncurses ncurses-devel
+```
+
+*[ CentOS ]*
+- Install python: 
+
+```
+yum -y install python python-pip python-libs python-devel python3 python3-pip python3-libs python3-devel
+```
+
+- Compile:
+
+```
+install_vim8_INSTALL_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
+  printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+
+  if [ -e "/usr/local/bin/vim" ]; then
+    printf "$debug_prefix ${CYN_ROLLUP_IT} vim8 has been already  installed ${END_ROLLUP_IT} \n"
+  else
+    local -r tmp_dir=$(mktemp -d -t ci-XXXXXXXXXX)
+    if [ -d "$tmp_dir" ]; then
+      rm -Rf "$tmp_dir"
+    fi
+
+    mkdir ${tmp_dir}
+    cd ${tmp_dir}
+
+    # Get source
+    git clone https://github.com/vim/vim && cd vim
+
+    # OPTIONAL: configure to provide a comprehensive vim - You can skip this step
+    #  and go  straight to `make` which will configure, compile and link with
+    #  defaults.
+
+    if [ $(isDebian_SM_RUI) = "true" ]; then
+      ./configure \
+        --prefix=/usr/local \
+        --enable-gui=no \
+        --with-features=huge \
+        --enable-multibyte \
+        --enable-pythoninterp=yes \
+        --with-python-config-dir=/usr/lib/python2.7/config-x86_64-linux-gnu \
+        --enable-python3interp=yes \
+        --with-python3-command=/usr/bin/python3 \
+        --with-python3-config-dir=/usr/lib64/python3.6/config-3.6m-x86_64-linux-gnu \
+        --enable-fail-if-missing
+    elif [ $(isCentOS_SM_RUI) = "true" ]; then
+      ./configure \
+        --prefix=/usr/local \
+        --enable-gui=no \
+        --with-features=huge \
+        --enable-multibyte \
+        --enable-pythoninterp=yes \
+        --with-python-config-dir=/usr/lib64/python2.7/config \
+        --enable-python3interp=yes \
+        --with-python3-command=/usr/bin/python3 \
+        --with-python3-config-dir=/usr/lib64/python3.6/config-3.6m-x86_64-linux-gnu \
+        --enable-fail-if-missing
+    fi
+    # Build and install
+    make && make install
+    rm -Rf ${tmp_dir}
+
+    printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+  fi
+}
+```
 

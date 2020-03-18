@@ -180,26 +180,26 @@ install_vim8_INSTALL_RUI() {
         --with-python3-command=/usr/local/bin/python3.7 \
         --with-python3-config-dir=/usr/local/lib/python3.7/config-3.7m-x86_64-linux-gnu \
         --enable-fail-if-missing
-    elif [ $(isCentOS_SM_RUI) = "true" ]; then
-      ./configure \
-        --prefix=/usr/local \
-        --enable-gui=no \
-        --with-features=huge \
-        --enable-multibyte \
-        --enable-pythoninterp=yes \
-        --with-python-config-dir=/usr/lib64/python2.7/config \
-        --enable-python3interp=yes \
-        --with-python3-command=/usr/local/bin/python3.7 \
-        --with-python3-config-dir=/usr/local/lib/python3.7/config-3.7m-x86_64-linux-gnu \
-        --enable-fail-if-missing
-    fi
-    # Build and install
-    make && make install
-    rm -Rf ${tmp_dir}
+            elif [ $(isCentOS_SM_RUI) = "true" ]; then
+              ./configure \
+                --prefix=/usr/local \
+                --enable-gui=no \
+                --with-features=huge \
+                --enable-multibyte \
+                --enable-pythoninterp=yes \
+                --with-python-config-dir=/usr/lib64/python2.7/config \
+                --enable-python3interp=yes \
+                --with-python3-command=/usr/local/bin/python3.7 \
+                --with-python3-config-dir=/usr/local/lib/python3.7/config-3.7m-x86_64-linux-gnu \
+                --enable-fail-if-missing
+                fi
+                # Build and install
+                make && make install
+                rm -Rf ${tmp_dir}
 
-    printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
-  fi
-}
+                printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
+        fi
+      }
 
 #:
 #: Install Python3.7 (based on @link https://tecadmin.net/install-python-3-7-on-centos/
@@ -300,6 +300,14 @@ install_virtualenvwrapper_INSTALL_RUI() {
   if [ -e "/usr/local/bin/virtualenvwrapper.sh" ]; then
     printf "$debug_prefix ${CYN_ROLLUP_IT} virtualenvwarpper has been already  installed ${END_ROLLUP_IT} \n"
   else
+    local -r pip_path=$(findBin_SM_RUI 'pip3.7')
+    if [ -n "${pip_path}" ]; then
+      "${pip_path}" install virtualenvwrapper
+      onFailed_SM_RUI "$?" "Error: can't install virtualenvwrapper [ pip3.7 install virtualenvwrapper ]"
+    else
+      printf "\n ${debug_prefix} ${GRN_ROLLUP_IT} Debug: no pip3.7 has been found ${END_ROLLUP_IT}\n"
+    fi
+
     pip3 install virtualenvwrapper
     onFailed_SM_RUI $? "Error: can't install virtualenvwrapper [ pip3 install virtualenvwrapper ]"
   fi
