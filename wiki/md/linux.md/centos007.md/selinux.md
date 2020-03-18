@@ -13,9 +13,7 @@
 
     `getsebool -a | grep tftp`
 
-3. ##### To make it being permissive
-
-4. ##### Permissive mode
+3. ##### Permissive mode
 
     When SELinux is running in **permissive mode**, SELinux policy is not enforced. The system remains operational and **SELinux does not deny any operations but only logs AVC messages**, which can be then used for troubleshooting, debugging, and SELinux policy improvements. Each AVC is logged only once in this case.
     To make any change to SELinux, first modify /etc/selinux/config and change the policy to **permissive**:

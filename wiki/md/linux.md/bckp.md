@@ -7,7 +7,7 @@ dd if=/dev/hda | gzip -c | split -b 2000m - /mnt/smb_share/backup.img.gz
 
 1.2 Restore procedure:
 
-cat /mnt/smb_share/backup.img.gz.* | gzip -dc | dd of=/dev/hda
+    cat /mnt/smb_share/backup.img.gz.* | gzip -dc | dd of=/dev/hda
 
 >[Links!]
 >1. [About dd vs dump](http://www.bblisa.org/pipermail/bblisa/2006-December/001101.html)

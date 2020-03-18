@@ -12,7 +12,7 @@
 
     'awk' waits data from the 'stdin' so that whenever you print a line the awk will print "Some text\n".
 
-3. ##### Fileds
+3. ##### Fields
     To manipulate with fields we can use references: $0, $1, ... - the field are delimited with the 'space' by default but we can set the delimeter with the '-F' flag. Note that $0 - the whole string.
 
 4. ##### Files 

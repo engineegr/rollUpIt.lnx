@@ -38,14 +38,14 @@
 
 4. #### Environment variable in cron
 
-Although `sh` is involved in executing the command, the shell does not act as a *login shell* and does not read the contents of `~/.profile` or `~/.bash_profile`. As a result, the command’s environment variables might be set up somewhat differently from what you expect. If a command seems to work fine when executed from the shell but fails when introduced into a crontab file, the environment is the likely culprit. If need be, you can always wrap your command with a script that sets up the ap- propriate environment variables.
+    Although `sh` is involved in executing the command, the shell does not act as a *login shell* and does not read the contents of `~/.profile` or `~/.bash_profile`. As a result, the command’s environment variables might be set up somewhat differently from what you expect. If a command seems to work fine when executed from the shell but fails when introduced into a crontab file, the environment is the likely culprit. If need be, you can always wrap your command with a script that sets up the ap- propriate environment variables.
 
-To set env variable:
+    To set env variable:
 
-```
-PATH=/bin:/usr/bin
-* * * * * echo $(date) - $(uptime) >> ~/uptime.log
-```
+    ```
+    PATH=/bin:/usr/bin
+    * * * * * echo $(date) - $(uptime) >> ~/uptime.log
+    ```
 
 >[Links]
 >1. [How to run a task from cron manually](https://unix.stackexchange.com/questions/42715/how-can-i-make-cron-run-a-job-right-now-for-testing-debugging-without-changing)

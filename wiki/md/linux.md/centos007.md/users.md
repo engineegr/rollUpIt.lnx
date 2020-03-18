@@ -1,4 +1,4 @@
-    #### User management
+#### User management
 ---------------------
 
 1. ##### Add users
@@ -30,38 +30,38 @@
 
 4. ##### User password
 
-- Change:
+    - Change:
 
-`chage -d <date> <Username>`
+    `chage -d <date> <Username>`
 
-- To force a user to change a password on login:
+    - To force a user to change a password on login:
 
-`chage -d 0 <Username>`
+    `chage -d 0 <Username>`
 
 5. ##### Wheel vs sudo
 
-Also **sudo** allows the ability to run only certain commands as root instead of granting unlimited root privileges. Further, IIRC wheel group members must still know the root password to su whereas that is not the case with sudo.
+    Also **sudo** allows the ability to run only certain commands as root instead of granting unlimited root privileges. Further, IIRC wheel group members must still know the root password to su whereas that is not the case with sudo.
 
 6. ##### How to generate a sha512 password in CentOS 7?
 
-Use python:
-`python -c 'import crypt; print(crypt.crypt("somesecret", crypt.mksalt(crypt.METHOD_SHA512)))'`
+    Use python:
+    `python -c 'import crypt; print(crypt.crypt("somesecret", crypt.mksalt(crypt.METHOD_SHA512)))'`
 
 7. ##### How to empty an user's password?
 
-- Edit sudoers (to allow the user run `sudo`):
+    - Edit sudoers (to allow the user run `sudo`):
 
-`user ALL=(ALL) NOPASSWORD:ALL`
+    `user ALL=(ALL) NOPASSWORD:ALL`
 
-- Delete password:
+    - Delete password:
 
-`sudo passwd -d $(whoami)`
+    `sudo passwd -d $(whoami)`
 
 8. ##### Differences /etc/profile vs /etc/bashrc?
 
-/etc/profile - run only in interactive shell login unless we get many errors kind of "unbound var": don't run it from .sh scripts.
+    /etc/profile - run only in interactive shell login unless we get many errors kind of "unbound var": don't run it from .sh scripts.
 
-/etc/bashrc - run either in interactive shell login or in non-interactive shell login:
+    /etc/bashrc - run either in interactive shell login or in non-interactive shell login:
 
 [More details](https://devacademy.ru/article/razbiraiemsia-s-failami-etc-profile-i-etc-bashrc/):
 
@@ -76,11 +76,11 @@ Use python:
 
 9. ##### exit vs logout?
 
-Logout will not work on non login shells, like gnome-terminal/x-term or anyother shell you get on telnet,ftp,etc.
+    Logout will not work on non login shells, like gnome-terminal/x-term or anyother shell you get on telnet,ftp,etc.
 
-Exit is for any shell, login shell or non-login shell
+    Exit is for any shell, login shell or non-login shell
 
-Also, when you exit the login shell (assuming the shell is bash), the script `~/.bash_logout` is executed, giving you the opportunity to clean up anything you need before exiting. For example, in my .bash_login, I mount some CIFS remote drives (Windows shares, NAS directories, etc), so when I logout, those mounts are terminated properly.
+    Also, when you exit the login shell (assuming the shell is bash), the script `~/.bash_logout` is executed, giving you the opportunity to clean up anything you need before exiting. For example, in my .bash_login, I mount some CIFS remote drives (Windows shares, NAS directories, etc), so when I logout, those mounts are terminated properly.
 
 >[Link]
 >1.[How to generate a sha512 password](https://unix.stackexchange.com/questions/52108/how-to-create-sha512-password-hashes-on-command-line)
