@@ -44,7 +44,11 @@ prepareUser_SM_RUI() {
   fi
 
   if [[ ${PXE_INSTALLATION_SM_RUI} == "FALSE" ]]; then
-    doRunSkeletonUserHome_SM_RUI "$1"
+    if [[ "$(getSudoUser_COMMON_RUI)" == "root" ]]; then
+      skeletonUserHome_SM_RUI "$1"   
+    else	
+      doRunSkeletonUserHome_SM_RUI "$1"
+    fi
   fi
 
   prepareSSH_SM_RUI
@@ -134,7 +138,7 @@ onFailed_SM_RUI() {
 
 prepareSudoersd_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix enter \n"
+  printf "$debug_prefix Enter \n"
   if [[ -z "$1" ]]; then
     printf "$debug_prefix No user name specified [$1] \n"
     exit 1
@@ -181,7 +185,7 @@ fi
 #:
 createAdmUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix Enter the \n"
+  printf "$debug_prefix Enter\n"
   printf "$debug_prefix [$1] parameter #1 \n"
 
   if [[ -n "$1" && -n "$2" ]]; then
@@ -490,7 +494,7 @@ EOF
     ntpdate -s 0.ru.pool.ntp.org
     onFailed_SM_RUI $? "Error: can't synchronize time with [ntpdate -s 0.ru.pool.ntp.org]. Exit."
   else
-    ntpd -qa
+    ntpd -gq
     onFailed_SM_RUI $? "Error: can't synchronize time with [ntpd -qa]. Exit."
   fi
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -o errexit
-# set -o xtrace
+set -o xtrace
 set -o nounset
 
 ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"

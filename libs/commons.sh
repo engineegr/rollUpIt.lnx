@@ -166,7 +166,8 @@ removePkg_COMMON_RUI() {
 }
 
 getSudoUser_COMMON_RUI() {
-  echo "$([[ -n "$SUDO_USER" ]] && echo "$SUDO_USER" || echo "$(whoami)")"
+  local __SUDO_USER="${SUDO_USER:-}"
+  echo "$([[ -n "${__SUDO_USER}" ]] && echo "$SUDO_USER" || echo "$(whoami)")"
 }
 
 #:
@@ -518,7 +519,7 @@ backPrint_COMMON_RUI() {
   done <<EOF
 ${msg_str}
 EOF
-  printf "\n"
+printf "\n"
 }
 
 getShLogName_COMMON_RUI() {
