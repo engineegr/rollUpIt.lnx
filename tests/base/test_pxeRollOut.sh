@@ -29,12 +29,12 @@ fi
 #: Suppress progress bar
 #: It is used in case of the PXE installation
 #:
-SUPPRESS_PB_COMMON_RUI="FALSE"
+SUPPRESS_PB_COMMON_RUI="TRUE"
 
 #:
 #: PXE is not able to operate the systemd during installation
 #:
-PXE_INSTALLATION_SM_RUI="FALSE"
+PXE_INSTALLATION_SM_RUI="TRUE"
 
 trap "onInterruption_COMMON_RUI $? $LINENO $BASH_COMMAND" ERR EXIT SIGHUP SIGINT SIGTERM SIGQUIT RETURN
 
