@@ -7,13 +7,13 @@ doUpdate_SM_RUI() {
   runInBackground_COMMON_RUI "yum -y update --exclude=kernel"
   runInBackground_COMMON_RUI "yum -y upgrade"
   runInBackground_COMMON_RUI "yum -y groupinstall \"Development Tools\""
-  # needs to install python3.6
+  # Install IUS-rep: https://ius.io/setup
   printf "${debug_prefix} $(isPkgInstalled_COMMON_RUI 'ius-release') "
   # if we don't check it will produce an error var/tmp/yum-root-qrZ02z/i-release.rpm: не обновляет установленный пакет. Ошибка: выполнять нечего.
   if [ "$(isPkgInstalled_COMMON_RUI 'ius-release')" = 'false' ]; then
-    runInBackground_COMMON_RUI "yum install -y https://centos7.iuscommunity.org/ius-release.rpm"
+    runInBackground_COMMON_RUI "yum install -y https://repo.ius.io/ius-release-el7.rpm"
   fi
-  # installEpel_SM_RUI
+  installEpel_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }

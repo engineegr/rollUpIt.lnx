@@ -28,7 +28,7 @@ fi
 #: Suppress progress bar
 #: It is used in case of the PXE installation
 #:
-SUPPRESS_PB_COMMON_RUI="FALSE"
+SUPPRESS_PB_COMMON_RUI="TRUE"
 
 #:
 #: PXE is not able to operate the systemd during installation
@@ -59,15 +59,8 @@ main() {
     exit 1
   fi
   ln -sf "${ROOT_DIR_ROLL_UP_IT}" "${home_dir}/rui"
-
-  cat <<-EOF >>"${home_dir}/.bash_profile"
-# Run on login
-if [ -f "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh" ]; then
-  "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh"
-fi
-EOF
-
-printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
+  
+  printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
 if [ ! -e "${ROOT_DIR_ROLL_UP_IT}/log" ]; then
