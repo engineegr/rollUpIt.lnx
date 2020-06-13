@@ -12,6 +12,7 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/install/install.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/commons.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/logging/logging.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/sm.sh"
 
 if [ $(isDebian_SM_RUI) = "true" ]; then
@@ -66,14 +67,6 @@ main() {
     exit 1
   fi
   ln -sf "/usr/local/src/post-scripts/rollUpIt.lnx" "${home_dir}/rui"
-
-  cat <<-EOF >>"${home_dir}/.bash_profile"
-# Run on login
-if [ -f "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh" ]; then
-  "${home_dir}/rui/tests/base/test_runOnFirstLogin.sh"
-fi
-EOF
-
   chown -Rf "${user_name}":"${user_name}" "${home_dir}"
 
   printf "${debug_prefix} ${GRN_ROLLUP_IT} System INFO: \n$(cat /etc/*-release)\n\tBase system configuration has been FINISHED ............................... [OK] ${END_ROLLUP_IT}"

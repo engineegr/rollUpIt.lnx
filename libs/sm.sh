@@ -20,38 +20,37 @@ isCentOS_SM_RUI() {
 #
 prepareUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
-  printf "$debug_prefix enter the \n"
-  printf "$debug_prefix [$1] parameter #1 \n"
+  printf "${debug_prefix} Enter the function\n"
+  printf "${debug_prefix} [$1] parameter #1 \n"
 
   if [[ -z "$1" ]]; then
-    printf "${RED_ROLLUP_IT} $debug_prefix Error: No parameters passed into the ${END_ROLLUP_IT}\n" >&2
+    printf "${RED_ROLLUP_IT} ${debug_prefix} Error: No parameters passed into the ${END_ROLLUP_IT}\n" >&2
     exit 1
   fi
 
   local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
   if [[ -z "$isExist" ]]; then
-    printf "$debug_prefix The user doesn't exist \n"
+    printf "${debug_prefix} The user doesn't exist \n"
     createAdmUser_SM_RUI "$1" "$2"
   else
-    printf "$debug_prefix The user exists\n"
+    printf "${debug_prefix} The user exists\n"
     echo "$1:$2" | chpasswd -e
     onFailed_SM_RUI "$?" "\nError: Can't set user password  [echo "$1:$2" | chpasswd -e]\n"
     chage -d 0 "$1"
     onFailed_SM_RUI "$?" "\nError: Can't force the user to change his password [chage -d 0 $1]\n"
   fi
   if [[ "$1" != "root" ]]; then
-    prepareSudoersd_SM_RUI "$1"
+    makeUserAsAdmin_SM_RUI "$1"
   fi
 
   if [[ ${PXE_INSTALLATION_SM_RUI} == "FALSE" ]]; then
     if [[ "$(getSudoUser_COMMON_RUI)" == "root" ]]; then
-      skeletonUserHome_SM_RUI "$1"   
-    else	
+      skeletonUserHome_SM_RUI "$1"
+    else
       doRunSkeletonUserHome_SM_RUI "$1"
     fi
   fi
-
-  prepareSSH_SM_RUI
+  printf "${debug_prefix} Exit the function \n"
 }
 
 #
@@ -94,17 +93,17 @@ skeletonUserHome_SM_RUI() {
       exit 1
     fi
 
-#    refused to use YouCompleteMe because of error "Unavailable: unable to load Python": https://github.com/ycm-core/YouCompleteMe/issues/3323
-#    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
-#    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
-#    python install.py --clang-completer
-#    rc="$?"
-#    if [ "$rc" -ne 0 ]; then
-#      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
-#      exit 1
-#    fi
-else
-  printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
+  #    refused to use YouCompleteMe because of error "Unavailable: unable to load Python": https://github.com/ycm-core/YouCompleteMe/issues/3323
+  #    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
+  #    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
+  #    python install.py --clang-completer
+  #    rc="$?"
+  #    if [ "$rc" -ne 0 ]; then
+  #      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
+  #      exit 1
+  #    fi
+  else
+    printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
   fi
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
@@ -136,7 +135,7 @@ onFailed_SM_RUI() {
   fi
 }
 
-prepareSudoersd_SM_RUI() {
+makeUserAsAdmin_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix Enter \n"
   if [[ -z "$1" ]]; then
@@ -147,7 +146,7 @@ prepareSudoersd_SM_RUI() {
   local -r sudoers_file="/etc/sudoers"
   local -r sudoers_addon="/etc/sudoers.d/local_admgr_add"
   local -r sudoers_templ="$(
-  cat <<-EOF
+    cat <<-EOF
 User_Alias	LOCAL_ADM_GROUP = $1
 
 # Run any command on any hosts but you must log in
@@ -155,28 +154,28 @@ User_Alias	LOCAL_ADM_GROUP = $1
 
 LOCAL_ADM_GROUP ALL=(ALL)ALL
 EOF
-)"
-if [[ ! -f $sudoers_addon ]]; then
-  touch $sudoers_addon
-  echo "$sudoers_templ" >$sudoers_addon
-  chmod 0440 ${sudoers_addon}
-else
-  # add new user
-  local replace_str=""
-  replace_str=$(echo "$sudoers_templ" | awk -v user_name="$1" '/^User_Alias/ {
+  )"
+  if [[ ! -f $sudoers_addon ]]; then
+    touch $sudoers_addon
+    echo "$sudoers_templ" >$sudoers_addon
+    chmod 0440 ${sudoers_addon}
+  else
+    # add new user
+    local replace_str=""
+    replace_str=$(echo "$sudoers_templ" | awk -v user_name="$1" '/^User_Alias/ {
   print $0","user_name
 }')
 
-if [[ -n "replace_str" ]]; then
-  # - to write to a file: use -i option
-  # - to use shell variables use double qoutes
-  sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
-  sed -i "s/^\#\s*\#includedir\s*\/etc\/sudoers\.d\s*$/\#includedir \/etc\/sudoers\.d/g" $sudoers_file
-  else
-    printf "$debug_prefix Error Can't find User_Alias string\n"
-    exit 1
-fi
-fi
+    if [[ -n "replace_str" ]]; then
+      # - to write to a file: use -i option
+      # - to use shell variables use double qoutes
+      sed -i "s/^User_Alias.*$/$replace_str/g" $sudoers_addon
+      sed -i "s/^\#\s*\#includedir\s*\/etc\/sudoers\.d\s*$/\#includedir \/etc\/sudoers\.d/g" $sudoers_file
+    else
+      printf "$debug_prefix Error Can't find User_Alias string\n"
+      exit 1
+    fi
+  fi
 }
 
 #:
@@ -201,7 +200,7 @@ createAdmUser_SM_RUI() {
 
     printf "debug: [ $0 ] There is no [ $user_name ] user, let's create him \n"
     # adduser $1 --gecos "$1" --disabled-password # not CentOS compatible
-    adduser $1 
+    adduser $1
     rc=$?
     if [[ $rc -ne 0 ]]; then
       printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ adduser $1 --gecos "$1" --disabled-password ]${END_ROLLUP_IT}" >&2
@@ -378,7 +377,7 @@ installPackages_SM_RUI() {
 
 preparePythonEnv_SM_RUI() {
   upgradePip3_7_INSTALL_RUI
-  install_virtualenvwrapper_INSTALL_RUI  
+  install_virtualenvwrapper_INSTALL_RUI
   local -r pip_bin="$(findBin_SM_RUI 'pip3.7')"
   "${pip_bin}" install Pygments
 }
@@ -387,9 +386,9 @@ installDefaults_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-  local -r def_pkg_list=( "make" "ntp" "gcc" "git-core" "sudo" 
-  "git" "tcpdump" "wget" "lsof" 
-  "net-tools" "curl" "python" "python-pip")
+  local -r def_pkg_list=("make" "ntp" "gcc" "git-core" "sudo"
+    "git" "tcpdump" "wget" "lsof"
+    "net-tools" "curl" "python" "python-pip")
 
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI def_pkg_list \"\""
 
@@ -418,8 +417,36 @@ setLocale_SM_RUI() {
 prepareSSH_SM_RUI() {
   declare -r local daemon_cfg="/etc/ssh/sshd_config"
 
-  sed -i "0,/.*PermitRootLogin.*$/ s/.*PermitRootLogin.*/PermitRootLogin no/g" $daemon_cfg
+  sed -i "0,/.*PermitRootLogin.*$/ s/.*PermitRootLogin.*/PermitRootLogin yes/g" $daemon_cfg
   sed -i "0,/.*PubkeyAuthentication.*$/ s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" $daemon_cfg
+  sed -i "0,/.*UseDNS.*$/ s/.*UseDNS.*/UseDNS no/g" $daemon_cfg
+}
+
+#
+# Extra sudoers changes:
+# - keep vim as default editor
+#
+prepareSudoers_SM_RUI() {
+  local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
+  printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
+  # result file
+  # local -r sudoers_file="${ROOT_DIR_ROLL_UP_IT}/tmp/sudoers"
+  local -r sudoers_file="/etc/sudoers"
+  # local -r sudoers_orig_file="${ROOT_DIR_ROLL_UP_IT}/tmp/sudoers.orig"
+  local -r sudoers_orig_file="/etc/sudoers.orig"
+  cp "${sudoers_file}" "${sudoers_orig_file}"
+
+  # Make vim as default EDITOR within 'sudo'
+  local -r is_changed="$(grep -E -e '^Defaults    env_keep \+= \"EDITOR VISUAL SUDO_EDITOR\"' ${sudoers_file})"
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Is Changed: ${is_changed} ${END_ROLLUP_IT} \n"
+  if [ -z "${is_changed}" ]; then
+    printf "$debug_prefix ${GRN_ROLLUP_IT} Make vim as default EDITOR within 'sudo' ${END_ROLLUP_IT} \n"
+    awk '/Defaults\s+env_keep \+=.*/ && !x {print "Defaults    env_keep += \"EDITOR VISUAL SUDO_EDITOR\""; x=1} 1' ${sudoers_orig_file} >${sudoers_file}
+  else
+    printf "$debug_prefix ${GRN_ROLLUP_IT} No Changes are required for the sudoers ${END_ROLLUP_IT} \n"
+  fi
+
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Exit the function ${END_ROLLUP_IT} \n"
 }
 
 findBin_SM_RUI() {
@@ -444,6 +471,14 @@ baseSetup_SM_RUI() {
   setupLogging_SM_RUI
   setupUnattendedUpdates_SM_RUI
   setupPip_SM_RUI
+  prepareSSH_SM_RUI
+
+  #
+  # Extra changes
+  #
+  # Preserve vim as a default editor when run sudo
+  awk '/Defaults\s+env_keep \+=.*/ && !x {print "Defaults    env_keep += \"EDITOR VISUAL SUDO_EDITOR\""; x=1} 1' ${sudoers_file} \
+    >${sudoers_file}
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
