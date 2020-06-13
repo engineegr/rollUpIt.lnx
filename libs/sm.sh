@@ -472,13 +472,7 @@ baseSetup_SM_RUI() {
   setupUnattendedUpdates_SM_RUI
   setupPip_SM_RUI
   prepareSSH_SM_RUI
-
-  #
-  # Extra changes
-  #
-  # Preserve vim as a default editor when run sudo
-  awk '/Defaults\s+env_keep \+=.*/ && !x {print "Defaults    env_keep += \"EDITOR VISUAL SUDO_EDITOR\""; x=1} 1' ${sudoers_file} \
-    >${sudoers_file}
+  prepareSudoers_SM_RUI
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
 }
