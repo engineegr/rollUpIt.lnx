@@ -93,15 +93,15 @@ skeletonUserHome_SM_RUI() {
       exit 1
     fi
 
-  #    refused to use YouCompleteMe because of error "Unavailable: unable to load Python": https://github.com/ycm-core/YouCompleteMe/issues/3323
-  #    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
-  #    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
-  #    python install.py --clang-completer
-  #    rc="$?"
-  #    if [ "$rc" -ne 0 ]; then
-  #      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
-  #      exit 1
-  #    fi
+    #    refused to use YouCompleteMe because of error "Unavailable: unable to load Python": https://github.com/ycm-core/YouCompleteMe/issues/3323
+    #    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
+    #    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
+    #    python install.py --clang-completer
+    #    rc="$?"
+    #    if [ "$rc" -ne 0 ]; then
+    #      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
+    #      exit 1
+    #    fi
   else
     printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
   fi
@@ -437,11 +437,23 @@ prepareSudoers_SM_RUI() {
   cp "${sudoers_file}" "${sudoers_orig_file}"
 
   # Make vim as default EDITOR within 'sudo'
-  local -r is_changed="$(grep -E -e '^Defaults    env_keep \+= \"EDITOR VISUAL SUDO_EDITOR\"' ${sudoers_file})"
+  local is_changed="$(grep -E -e '^Defaults    env_keep \+= \"EDITOR VISUAL SUDO_EDITOR\"' ${sudoers_file})"
   printf "$debug_prefix ${GRN_ROLLUP_IT} Is Changed: ${is_changed} ${END_ROLLUP_IT} \n"
   if [ -z "${is_changed}" ]; then
     printf "$debug_prefix ${GRN_ROLLUP_IT} Make vim as default EDITOR within 'sudo' ${END_ROLLUP_IT} \n"
     awk '/Defaults\s+env_keep \+=.*/ && !x {print "Defaults    env_keep += \"EDITOR VISUAL SUDO_EDITOR\""; x=1} 1' ${sudoers_orig_file} >${sudoers_file}
+  else
+    printf "$debug_prefix ${GRN_ROLLUP_IT} No Changes are required for the sudoers ${END_ROLLUP_IT} \n"
+  fi
+
+  # is_changed=$(grep -E -e '^Defaults    secure_path \=.*/usr/local/bin.*' /etc/sudoers)
+  set +o errexit
+  is_changed=$(grep -P -e "^Defaults    secure_path =.*/usr/local/bin.*" ${sudoers_file})
+  set -o errexit
+  printf "$debug_prefix ${GRN_ROLLUP_IT} Is Changed: ${is_changed} ${END_ROLLUP_IT} \n"
+  if [ -z "${is_changed}" ]; then
+    printf "$debug_prefix ${GRN_ROLLUP_IT} Add /usr/local/bin to the secure path i${END_ROLLUP_IT} \n"
+    sed -i -E "0,/^Defaults    secure_path =.*/ s/^Defaults    secure_path =(.*)/Defaults    secure_path =\1:\/usr\/local\/bin/g" ${sudoers_file}
   else
     printf "$debug_prefix ${GRN_ROLLUP_IT} No Changes are required for the sudoers ${END_ROLLUP_IT} \n"
   fi
