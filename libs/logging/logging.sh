@@ -40,7 +40,7 @@ deployCfg_LOGGING_RUI() {
   if [ -e "${root_rsyslogd_cfg}.orig" ]; then
     printf "${debug_prefix} ${GRN_ROLLUP_IT} [rsyslogd] setup has already done. Pass. ${END_ROLLUP_IT} \n"
   else
-    local -r rsyslogd_cfg="resources/logging/rsyslog.conf"
+    local -r rsyslogd_cfg="${ROOT_DIR_ROLL_UP_IT}/resources/logging/rsyslog.conf"
 
     systemctl stop rsyslog
 
