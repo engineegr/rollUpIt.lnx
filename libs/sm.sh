@@ -437,7 +437,7 @@ prepareSudoers_SM_RUI() {
   cp "${sudoers_file}" "${sudoers_orig_file}"
 
   # Make vim as default EDITOR within 'sudo'
-  local is_changed="$(grep -E -e '^Defaults    env_keep \+= \"EDITOR VISUAL SUDO_EDITOR\"' ${sudoers_file})"
+  local is_changed="$(grep -E -e '^Defaults    env_keep \+= \"EDITOR VISUAL SUDO_EDITOR\"' ${sudoers_file} || true)"
   printf "$debug_prefix ${GRN_ROLLUP_IT} Is Changed: ${is_changed} ${END_ROLLUP_IT} \n"
   if [ -z "${is_changed}" ]; then
     printf "$debug_prefix ${GRN_ROLLUP_IT} Make vim as default EDITOR within 'sudo' ${END_ROLLUP_IT} \n"
@@ -446,10 +446,9 @@ prepareSudoers_SM_RUI() {
     printf "$debug_prefix ${GRN_ROLLUP_IT} No Changes are required for the sudoers ${END_ROLLUP_IT} \n"
   fi
 
-  # is_changed=$(grep -E -e '^Defaults    secure_path \=.*/usr/local/bin.*' /etc/sudoers)
-  set +o errexit
-  is_changed=$(grep -P -e "^Defaults    secure_path =.*/usr/local/bin.*" ${sudoers_file})
-  set -o errexit
+  # In the case when grep does match nothing its return code is 1 that cause error exit code of the script.
+  # Hence we use || true
+  is_changed="$(grep -P -e "^Defaults    secure_path =.*/usr/local/bin.*" ${sudoers_file} || true)"
   printf "$debug_prefix ${GRN_ROLLUP_IT} Is Changed: ${is_changed} ${END_ROLLUP_IT} \n"
   if [ -z "${is_changed}" ]; then
     printf "$debug_prefix ${GRN_ROLLUP_IT} Add /usr/local/bin to the secure path i${END_ROLLUP_IT} \n"
