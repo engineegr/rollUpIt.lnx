@@ -43,12 +43,20 @@ prepareUser_SM_RUI() {
     makeUserAsAdmin_SM_RUI "$1"
   fi
 
-  if [[ ${PXE_INSTALLATION_SM_RUI} == "FALSE" ]]; then
-    if [[ "$(getSudoUser_COMMON_RUI)" == "root" ]]; then
+  local -r exec_user="$(whoami)"
+  local -r sudo_user="${SUDO_USER:-}"
+
+  if [[ -z "${sudo_user}" ]]; then
+    if [[ "$1" == "${exec_user}" ]]; then
       skeletonUserHome_SM_RUI "$1"
-    else
+    elif [[ "$1" == 'root' ]]; then
       doRunSkeletonUserHome_SM_RUI "$1"
+    else
+      onErrors_SM_RUI "$debug_prefix You don't have enough perms"
+      exit 1
     fi
+  elif [[ -n "${sudo_user}" ]]; then
+    doRunSkeletonUserHome_SM_RUI "$1"
   fi
   printf "${debug_prefix} Exit the function \n"
 }
