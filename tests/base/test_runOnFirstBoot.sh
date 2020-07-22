@@ -19,9 +19,9 @@ if [ $(isDebian_SM_RUI) = "true" ]; then
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
 elif [ $(isCentOS_SM_RUI) = "true" ]; then
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh"
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh"
-  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
 else
   onFailed_SM_RUI "Error: can't determine the OS type"
   exit 1

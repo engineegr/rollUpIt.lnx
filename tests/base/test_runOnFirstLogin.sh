@@ -7,7 +7,6 @@ set -o nounset
 ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
 # ROOT_DIR_ROLL_UP_IT="/usr/local/src/rollUpIt.lnx"
 
-
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"
@@ -20,6 +19,7 @@ if [ $(isDebian_SM_RUI) = "true" ]; then
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
 elif [ $(isCentOS_SM_RUI) = "true" ]; then
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh"
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh"
 else
