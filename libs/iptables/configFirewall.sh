@@ -247,26 +247,21 @@ beginFwRules_FW_RUI() {
   local -r in_udp_wan_port_set="${10:-'nd'}"
   local -r is_synproxy="${11:-'true'}"
 
-  # Always accept loopback traffic
-  # iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -j ACCEPT
-  #  iptables -I INPUT -p tcp -i "${VBOX_IFACE_FW_RUI}" -s "${VBOX_IP_FW_RUI}" -m state --state NEW --dport 22 -j ACCEPT
-  #  iptables -I INPUT -p udp -i "${VBOX_IFACE_FW_RUI}" -s "${VBOX_IP_FW_RUI}" -m state --state NEW --dport 68 -j ACCEPT
-  #  iptables -I INPUT -p udp -i "${VBOX_IFACE_FW_RUI}" -s "${VBOX_IP_FW_RUI}" -m state --state NEW --dport 53 -j ACCEPT
-  #  iptables -I OUTPUT -p udp -o "${VBOX_IFACE_FW_RUI}" -m state --state NEW --dport 67 -j ACCEPT
-
   # Declare user chains
   iptables -v -N bad_tcp_packets
   iptables -v -N invalid_packets
   iptables -v -N private_net_packets
+  iptables -v -N new_state_packets
 
   iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
   iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
   iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -j invalid_packets
   iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -j invalid_packets
-  iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -j private_net_packets
-  iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -j private_net_packets
+  iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -j new_state_packets
+  iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -j new_state_packets
 
   iptables -v -A invalid_packets -m conntrack --ctstate INVALID -j DROP
+  iptables -v -A new_state_packets -m conntrack --ctstate NEW -j private_net_packets
 
   #------ Port scan rules - DROP -----------------------------------------#
   iptables -v -N PORTSCAN
@@ -304,9 +299,9 @@ beginFwRules_FW_RUI() {
   iptables -v -A private_net_packets -s 192.0.2.0/24 -m limit --limit 3/minute --limit-burst 3 --j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
   iptables -v -A private_net_packets -s 192.0.2.0/24 -j DROP
   iptables -v -A private_net_packets -s 192.168.0.0/16 -m limit --limit 3/minute --limit-burst 3 --j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
-  # iptables -v -A private_net_packets -s 192.168.0.0/16 -j DROP
-  # iptables -v -A private_net_packets -s 10.0.0.0/8 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
-  # iptables -v -A private_net_packets -s 10.0.0.0/8 -j DROP
+  iptables -v -A private_net_packets -s 192.168.0.0/16 -j DROP
+  iptables -v -A private_net_packets -s 10.0.0.0/8 -j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
+  iptables -v -A private_net_packets -s 10.0.0.0/8 -j DROP
   iptables -v -A private_net_packets -s 0.0.0.0/8 -m limit --limit 3/minute --limit-burst 3 --j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
   iptables -v -A private_net_packets -s 0.0.0.0/8 -j DROP
   iptables -v -A private_net_packets -s 240.0.0.0/5 -m limit --limit 3/minute --limit-burst 3 --j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
@@ -329,6 +324,7 @@ beginFwRules_FW_RUI() {
   if [ "${out_tcp_fw_port_set}" != 'nd' ]; then
     if [ -n "$(ipset list -n | grep "${out_tcp_fw_port_set}")" ]; then
       iptables -v -A OUTPUT -p tcp --syn -o "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+        -m limit --limit 3/minute --limit-burst 3 \
         -m set --match-set "${out_tcp_fw_port_set}" dst \
         -j LOG --log-prefix "iptables [WAN{new,TCP}->OUTPUT]"
 
@@ -344,6 +340,7 @@ beginFwRules_FW_RUI() {
   if [ "${out_udp_fw_port_set}" != 'nd' ]; then
     if [ -n "$(ipset list -n | grep "${out_udp_fw_port_set}")" ]; then
       iptables -v -A OUTPUT -p udp -o "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+        -m limit --limit 3/minute --limit-burst 3 \
         -m set --match-set "${out_udp_fw_port_set}" dst \
         -j LOG --log-prefix "iptables [WAN{new,UDP}->OUTPUT]"
 
@@ -361,6 +358,7 @@ beginFwRules_FW_RUI() {
       if [ "${in_trusted_tcp_wan_port_set}" != 'nd' ]; then
         if [ -n "$(ipset list -n | grep "${in_trusted_tcp_wan_port_set}")" ]; then
           iptables -v -A INPUT -p tcp --syn -i "${WAN_IFACE_FW_RUI}" -m state --state NEW -m set --match-set "${trusted_ipset}" src \
+            -m limit --limit 3/minute --limit-burst 3 \
             -m set --match-set "${in_trusted_tcp_wan_port_set}" dst \
             -j LOG --log-prefix "iptables [WAN{new,TCP}->INPUT]"
 
@@ -376,6 +374,7 @@ beginFwRules_FW_RUI() {
       if [ "${in_trusted_udp_wan_port_set}" != 'nd' ]; then
         if [ -n "$(ipset list -n | grep "${in_trusted_udp_wan_port_set}")" ]; then
           iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW -m set --match-set "${trusted_ipset}" src \
+            -m limit --limit 3/minute --limit-burst 3 \
             -m set --match-set "${in_trusted_udp_wan_port_set}" dst \
             -j LOG --log-prefix "iptables [WAN{new,UDP}->INPUT]"
 
@@ -401,6 +400,7 @@ beginFwRules_FW_RUI() {
       else
         iptables -v -A INPUT -p tcp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
           -m set --match-set "${in_tcp_wan_port_set}" dst \
+          -m limit --limit 3/minute --limit-burst 3 \
           -j LOG --log-prefix "iptables [WAN{new,TCP}->INPUT]"
 
         iptables -v -A INPUT -p tcp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
@@ -417,6 +417,7 @@ beginFwRules_FW_RUI() {
     if [ -n "$(ipset list -n | grep "${in_udp_wan_port_set}")" ]; then
       iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
         -m set --match-set "${in_udp_wan_port_set}" dst \
+        -m limit --limit 3/minute --limit-burst 3 \
         -j LOG --log-prefix "iptables [WAN{new,UDP}->INPUT]"
 
       iptables -v -A INPUT -p udp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
