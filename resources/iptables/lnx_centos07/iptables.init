@@ -21,6 +21,7 @@
 # Source function library.
 . /etc/init.d/functions
 
+IPSET_DATA_DIR='/usr/local/etc/ipset'
 IPTABLES=iptables
 IPTABLES_DATA=/etc/sysconfig/$IPTABLES
 IPTABLES_FALLBACK_DATA=${IPTABLES_DATA}.fallback
@@ -385,7 +386,7 @@ restart() {
 }
 
 load_ipset() {
-  local -r IPSET_DATA='/usr/local/etc/'
+  local -r IPSET_DATA="${IPSET_DATA_DIR}/ipset.rules.v4"
   if [ -e $IPSET_DATA ]; then
     echo 'Debug [load_ipset]: restore ipset rules store'
     /sbin/ipset restore -file $IPSET_DATA
@@ -396,7 +397,7 @@ load_ipset() {
 
 
 save_ipset() {
-  local -r IPSET_DATA='/usr/local/etc/'
+  local -r IPSET_DATA="${IPSET_DATA_DIR}/ipset.rules.v4"
   if [ -e $IPSET_DATA ]; then
     echo 'Debug [ipset]: save ipset rules'
     /usr/sbin/ipset save >$IPSET_DATA
