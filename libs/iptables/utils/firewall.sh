@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -o errexit
-set -o xtrace
+# set -o xtrace
 set -o nounset
 
 ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
@@ -12,10 +12,22 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/install/install.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/sm.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/iptables/synproxy.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/iptables/configFirewall.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/iptables/synproxy.sh"
+source "$ROOT_DIR_ROLL_UP_IT/libs/iptables/configFirewall.sh"
+
+if [ $(isDebian_SM_RUI) = "true" ]; then
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh"
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh"
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/iptables/configFirewall.sh"
+elif [ $(isCentOS_SM_RUI) = "true" ]; then
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh"
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh"
+  source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/iptables/configFirewall.sh"
+else
+  onFailed_SM_RUI "Error: can't determine the OS type"
+  exit 1
+fi
 
 loop_FW_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
@@ -31,7 +43,7 @@ loop_FW_RUI() {
   local -r LAN_EXP="${LAN_BASE}(\s${INDEX_EXP}){0,1}(\s${LAN_INFW_EXP})?"
 
   local -r WAN_BASE="--wan\sint=${NAME_EXP}\ssn=${SUBNET_EXP}\sip=(${IP_EXP}|nd)"
-  local -r WAN_IN_EXP="\s(trusted=${NAME_EXP}\s)?((wan_in_tcp_ports=${NAME_EXP}(\swan_in_udp_ports=${NAME_EXP})?)|(wan_in_udp_ports=${NAME_EXP}(\swan_in_tcp_ports=${NAME_EXP})?))(\ssynproxy)?"
+  local -r WAN_IN_EXP="\s(trusted=${NAME_EXP}\s(wan_in_trusted_tcp_ports=${NAME_EXP}(\swan_in_trusted_udp_ports=${NAME_EXP})?)|(wan_in_trusted_udp_ports=${NAME_EXP}(\swan_in_trusted_tcp_ports=${NAME_EXP})?)\s)?((wan_in_tcp_ports=${NAME_EXP}(\swan_in_udp_ports=${NAME_EXP})?)|(wan_in_udp_ports=${NAME_EXP}(\swan_in_tcp_ports=${NAME_EXP})?))?(\ssynproxy)?"
   local -r WAN_OUT_EXP="\s((wan_out_tcp_ports=${NAME_EXP}(\swan_out_udp_ports=${NAME_EXP})?)|(wan_out_udp_ports=${NAME_EXP}(\swan_out_tcp_ports=${NAME_EXP})?))"
   local -r WAN_EXP="${WAN_BASE}(${WAN_OUT_EXP})?(${WAN_IN_EXP})?"
   local -r IND_REQ_LAN_EXP="${LAN_BASE}\swan_int=${NAME_EXP}\s${INDEX_EXP}(\s${LAN_INFW_EXP})?"
@@ -40,7 +52,7 @@ loop_FW_RUI() {
   local -r LINK_EXP="--link\slan001_iface=${NAME_EXP}\slan002_iface=${NAME_EXP}\sindex_f=[[:digit:]]+"
   local -r PORT_FRW_EXP="--pf\swan_iface=${NAME_EXP}\sfrom_port=\d+\sto_ip=${IP_EXP}\sto_port=\d+"
 
-  if [ -z "$(echo $@ | grep -P "((${WAN_EXP}(\s${LAN_EXP}))|(${INS_LAN_EXP})|(${LINK_EXP})|(${PORT_FRW_EXP})|(--reset)|(--install)|(--lm)|(--lf)|(--ln)|(-h))")" ]; then
+  if [ -z "$(echo $@ | grep -P "((${WAN_EXP}(\s${LAN_EXP})?)|(${INS_LAN_EXP})|(${LINK_EXP})|(${PORT_FRW_EXP})|(--reset)|(--install)|(--lm)|(--lf)|(--ln)|(-h))")" ]; then
     printf "${debug_prefix} ${RED_ROLLUP_IT} ERROR: Invalid arguments ${END_ROLLUP_IT}\n"
     help_FW_RUI
     exit 1
@@ -85,43 +97,57 @@ loop_FW_RUI() {
             printf "${debug_prefix} ${GRN_ROLLUP_IT} WAN GW ip: '--${OPTARG}' param: '${gw_ip}' ${END_ROLLUP_IT} \n"
 
             local trusted_ipset="nd"
+            local wan_in_trusted_tcp_ports="nd"
+            local wan_in_trusted_udp_ports="nd"
             local wan_out_tcp_ports="nd"
             local wan_out_udp_ports="nd"
             local wan_in_tcp_ports="nd"
             local wan_in_udp_ports="nd"
             local is_synproxy="false"
 
-            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_out_tcp_ports=.*${LAN_EXP}.*)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_out_tcp_ports=.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
               wan_out_tcp_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
               printf "${debug_prefix} ${GRN_ROLLUP_IT} Output TCP Port set: '--${OPTARG}' param: '${wan_out_tcp_ports}' ${END_ROLLUP_IT} \n"
             fi
 
-            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_out_udp_ports=.*${LAN_EXP}.*)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_out_udp_ports=.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
               wan_out_udp_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
               printf "${debug_prefix} ${GRN_ROLLUP_IT} Output UDP Port set: '--${OPTARG}' param: '${wan_out_udp_ports}' ${END_ROLLUP_IT} \n"
             fi
 
-            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*trusted=.*${LAN_EXP}.*)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*trusted=.*$)")" ]; then
               OPTIND=$(($OPTIND + 1))
               trusted_ipset="$(extractVal_COMMON_RUI "${!OPTIND}")"
               printf "${debug_prefix} ${GRN_ROLLUP_IT} Input trusted hosts (dest): '--${OPTARG}' param: '${trusted_ipset}' ${END_ROLLUP_IT} \n"
             fi
 
-            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_in_tcp_ports=.*${LAN_EXP}.*)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_in_trusted_tcp_ports=.*)$")" ]; then
+              OPTIND=$(($OPTIND + 1))
+              wan_in_trusted_tcp_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input Trusted TCP Port set: '--${OPTARG}' param: '${wan_in_trusted_tcp_ports}' ${END_ROLLUP_IT} \n"
+            fi
+
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_in_trusted_udp_ports=.*)$")" ]; then
+              OPTIND=$(($OPTIND + 1))
+              wan_in_trusted_udp_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
+              printf "${debug_prefix} ${GRN_ROLLUP_IT} Input Trusted UDP Port set: '--${OPTARG}' param: '${wan_in_trusted_udp_ports}' ${END_ROLLUP_IT} \n"
+            fi
+
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_in_tcp_ports=.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
               wan_in_tcp_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
               printf "${debug_prefix} ${GRN_ROLLUP_IT} Input TCP Port set: '--${OPTARG}' param: '${wan_in_tcp_ports}' ${END_ROLLUP_IT} \n"
             fi
 
-            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_in_udp_ports=.*${LAN_EXP}.*)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*wan_in_udp_ports=.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
               wan_in_udp_ports="$(extractVal_COMMON_RUI "${!OPTIND}")"
               printf "${debug_prefix} ${GRN_ROLLUP_IT} Input UDP Port set: '--${OPTARG}' param: '${wan_in_udp_ports}' ${END_ROLLUP_IT} \n"
             fi
 
-            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*synproxy.*${LAN_EXP}.*)$")" ]; then
+            if [ -n "$(echo $@ | grep -P "^(${WAN_BASE}.*synproxy.*)$")" ]; then
               OPTIND=$(($OPTIND + 1))
               is_synproxy="true"
             fi
@@ -131,8 +157,8 @@ loop_FW_RUI() {
               defineFwConstants_FW_RUI
               beginFwRules_FW_RUI "${int_name}" "${sn}" "${gw_ip}" \
                 "${wan_out_tcp_ports}" "${wan_out_udp_ports}" \
-                "${trusted_ipset}" "${wan_in_tcp_ports}" \
-                "${wan_in_udp_ports}" "${is_synproxy}"
+                "${trusted_ipset}" "${wan_in_trusted_tcp_ports}" "${wan_in_trusted_udp_ports}" \
+                "${wan_in_tcp_ports}" "${wan_in_udp_ports}" "${is_synproxy}"
             fi
             if_save_rules="true"
             if_begin="true"
