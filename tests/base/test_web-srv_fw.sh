@@ -36,6 +36,7 @@ main() {
   if [ -z $(ipset list -n | grep $IN_TCP_WAN_FW_PORTS) ]; then
     ipset create IN_TCP_WAN_FW_PORTS bitmap:port range 1-9000
     ipset add IN_TCP_WAN_FW_PORTS '80'
+    ipset add IN_TCP_WAN_FW_PORTS '443'
   fi
 
   local -r IN_TCP_TRUSTED_HOST_FW_PORTS='IN_TCP_TRUSTED_HOST_FW_PORTS'
@@ -47,7 +48,7 @@ main() {
   local -r IN_TRUSTED_HOSTS_IP_LIST='IN_TRUSTED_HOSTS_IP_LIST'
   if [ -z $(ipset list -n | grep $IN_TRUSTED_HOSTS_IP_LIST) ]; then
     ipset create IN_TRUSTED_HOSTS_IP_LIST hash:ip
-    ipset add IN_TRUSTED_HOSTS_IP_LIST '198.168.179.41'
+    ipset add IN_TRUSTED_HOSTS_IP_LIST '188.113.179.41'
   fi
 
   ${FW_UTIL} --wan int='eth0' sn='172.31.32.0/20' ip='172.31.39.133' \

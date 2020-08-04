@@ -57,14 +57,16 @@ inFwRuleSYNPROXY_FW_RUI() {
 
   iptables -I INPUT -i "${wan_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m conntrack --ctstate INVALID,UNTRACKED \
-    -j LOG --log-prefix "iptables [WAN{INVALID_UNTRACKED}->INPUT]"
+    -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460
 
   iptables -I INPUT -i "${wan_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m conntrack --ctstate INVALID,UNTRACKED \
-    -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460
+    -m limit --limit 3/minute --limit-burst 3 \
+    -j LOG --log-prefix "iptables [WAN{INVALID_UNTRACKED}->INPUT]"
 
   # send the respond (the 2nd step in the 3-shake conn)
   iptables -A OUTPUT -o "${wan_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" src \
+    -m limit --limit 3/minute --limit-burst 3 \
     --tcp-flags SYN,ACK ACK,SYN -m conntrack --ctstate INVALID,UNTRACKED -j LOG --log-prefix "iptables [WAN{INV/UNTR}->OUTPUT{wan}]"
 
   iptables -A OUTPUT -o "${wan_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" src \
@@ -73,12 +75,14 @@ inFwRuleSYNPROXY_FW_RUI() {
   # create a new connection in/out LOOPBACK interface (src-ip=client, dest-ip=server): the most strange part
   # to check if the SYNPROXY works: watch -n1 cat /proc/net/stat/synproxy
   iptables -A OUTPUT -o "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
+    -m limit --limit 3/minute --limit-burst 3 \
     -m conntrack --ctstate NEW -j LOG --log-prefix "iptables [WAN{NEW}->OUTPUT{lo}]"
 
   iptables -A OUTPUT -o "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m conntrack --ctstate NEW -j ACCEPT
 
   iptables -A INPUT -i "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
+    -m limit --limit 3/minute --limit-burst 3 \
     -m conntrack --ctstate NEW -j LOG --log-prefix "iptables [WAN{NEW}->INPUT{lo}]"
 
   iptables -A INPUT -i "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \

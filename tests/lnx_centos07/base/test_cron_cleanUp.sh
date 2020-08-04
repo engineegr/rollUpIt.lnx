@@ -25,12 +25,8 @@ source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/install/install.sh"
 trap "onInterruption_COMMON_RUI $? $LINENO $BASH_COMMAND" ERR EXIT SIGHUP SIGINT SIGTERM SIGQUIT RETURN
 
 main() {
-  clearScreen_TTY_RUI
-
   local -r debug_prefix="debug: [$0] [ $FUNCNAME[0] ] : "
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
-
-  getSysInfo_COMMON_RUI
 
   find /var -name "*.log" -mtime +7 -exec truncate {} --size 0 \;
   yum -y clean all
@@ -50,8 +46,6 @@ main() {
   package-cleanup --oldkernels --count=2
   onFailed_SM_RUI "$?" "Error: can't delete orphan packages [package-cleanup --oldkernels --count=2]"
 
-  clearScreen_TTY_RUI
-  getSysInfo_COMMON_RUI
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }
 
