@@ -41,13 +41,13 @@ main() {
   local -r rm_pckgs="$(package-cleanup --quiet --leaves --exclude-bin)"
 
   if [ -n "${rm_pckgs}" ]; then
-    echo ${rm_pckgs} | xargs yum -y remove
+    echo ${rm_pckgs} | xargs yum remove -y
   fi
 
   # xargs yum remove -y
   onFailed_SM_RUI "$?" "Error: can't remove orphan packahes [package-cleanup --quiet --leaves --exclude-bin | xargs yum remove -y]"
 
-  package-cleanup --oldkernels --count=2
+  package-cleanup --oldkernels --count=2 -y
   onFailed_SM_RUI "$?" "Error: can't delete orphan packages [package-cleanup --oldkernels --count=2]"
 
   clearScreen_TTY_RUI
