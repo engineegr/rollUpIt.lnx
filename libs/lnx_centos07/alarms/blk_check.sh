@@ -1,6 +1,6 @@
 #! /bin/bash
 
-THRESHOLD='50'
+THRESHOLD='75'
 
 alarm_msg="$(df -hl -Bg | awk -v th="$THRESHOLD" ' \
   { \
@@ -18,6 +18,4 @@ alarm_msg="$(df -hl -Bg | awk -v th="$THRESHOLD" ' \
 
 if [ -n "${alarm_msg}" ]; then
   echo -e "[Alarm] $(hostname) Storage space is exhausting (less than $THRESHOLD %).\n$alarm_msg"
-else
-  echo -e "[INFO] $(hostname) Storage space is OK"
 fi

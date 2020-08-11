@@ -2,7 +2,7 @@
 
 THRESHOLD='10'
 
-alarm_msg="$(free -t -hl | awk -v th=$THRESHOLD '/Total/{ sub("M", "", $4); if (int($4) < 100) { print "[Alarm] Free RAM: " $4 " [M] less than " th " [M]"; } }')"
+alarm_msg="$(free -t -hl | awk -v th=$THRESHOLD '/Total/{ sub("M", "", $4); if (int($4) < th) { print "[Alarm] Free RAM: " $4 " [M] less than " th " [M]"; } }')"
 
 if [ -n "${alarm_msg}" ]; then
   while IFS= read -r u; do
