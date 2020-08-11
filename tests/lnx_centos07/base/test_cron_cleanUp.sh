@@ -43,7 +43,7 @@ main() {
   # xargs yum remove -y
   onFailed_SM_RUI "$?" "Error: can't remove orphan packahes [package-cleanup --quiet --leaves --exclude-bin | xargs yum remove -y]"
 
-  package-cleanup --oldkernels --count=2
+  package-cleanup --oldkernels --count=2 -y
   onFailed_SM_RUI "$?" "Error: can't delete orphan packages [package-cleanup --oldkernels --count=2]"
 
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
