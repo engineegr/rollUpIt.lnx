@@ -253,15 +253,38 @@ beginFwRules_FW_RUI() {
   iptables -v -N private_net_packets
   iptables -v -N new_state_packets
 
-  iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
-  iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
-  iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -j invalid_packets
-  iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -j invalid_packets
-  iptables -v -A INPUT -i "${WAN_IFACE_FW_RUI}" -j new_state_packets
-  iptables -v -A FORWARD -i "${WAN_IFACE_FW_RUI}" -j new_state_packets
+  if [ "${in_tcp_wan_port_set}" != 'nd' ]; then
+    if [ -n "$(ipset list -n | grep "${in_tcp_wan_port_set}")" ]; then
+      if [[ "${is_synproxy}" == "true" ]]; then
+        prepareSYNPROXY_FW_RUI
+        # SYNPROXY sends a SYN flag packet through OUTPUT chain in LO interface: see https://programmer.ink/think/synproxy-for-connection-tracing.html
+        iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
+        iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -j invalid_packets
+        iptables -v -A INPUT -i "${LO_IFACE_FW_RUI}" -j new_state_packets
+        inFwRuleSYNPROXY_FW_RUI "${WAN_IFACE_FW_RUI}" "${LO_IFACE_FW_RUI}" "${in_tcp_wan_port_set}"
+      else
+        # filter bad packets ASAP: in mangle table we already have a conn state and state right before {INPUT, FORWARD} filter chains
+        iptables -v -A PREROUTING -t mangle -i "${WAN_IFACE_FW_RUI}" -p tcp -j bad_tcp_packets
+        iptables -v -A PREROUTING -t mangle -i "${WAN_IFACE_FW_RUI}" -j invalid_packets
+        iptables -v -A PREROUTING -t mangle -i "${WAN_IFACE_FW_RUI}" -j new_state_packets
 
-  iptables -v -A invalid_packets -m conntrack --ctstate INVALID -j DROP
+        iptables -v -A INPUT -p tcp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+          -m set --match-set "${in_tcp_wan_port_set}" dst \
+          -m limit --limit 3/minute --limit-burst 3 \
+          -j LOG --log-prefix "iptables [WAN{new,TCP}->INPUT]"
+
+        iptables -v -A INPUT -p tcp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
+          -m set --match-set "${in_tcp_wan_port_set}" dst \
+          -j ACCEPT
+      fi
+    else
+      printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find INPUT TCP WAN port set ${END_ROLLUP_IT}\n"
+      exit 1
+    fi
+  fi
+
   iptables -v -A new_state_packets -m conntrack --ctstate NEW -j private_net_packets
+  iptables -v -A invalid_packets -m conntrack --ctstate INVALID -j DROP
 
   #------ Port scan rules - DROP -----------------------------------------#
   iptables -v -N PORTSCAN
@@ -295,7 +318,7 @@ beginFwRules_FW_RUI() {
   iptables -v -A private_net_packets -s 169.254.0.0/16 -m limit --limit 3/minute --limit-burst 3 --j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
   iptables -v -A private_net_packets -s 169.254.0.0/16 -j DROP
   iptables -v -A private_net_packets -s 172.16.0.0/12 -m limit --limit 3/minute --limit-burst 3 --j LOG --log-prefix "iptables [private_net_packets, ->WAN-iface]"
-  iptables -v -A private_net_packets -s 172.16.0.0/12 -j DROP
+  # iptables -v -A private_net_packets -s 172.16.0.0/12 -j DROP
   iptables -v -A private_net_packets -s 192.0.2.0/24 -m limit --limit 3/minute --limit-burst 3 --j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
   iptables -v -A private_net_packets -s 192.0.2.0/24 -j DROP
   iptables -v -A private_net_packets -s 192.168.0.0/16 -m limit --limit 3/minute --limit-burst 3 --j LOG --log-prefix "iptables [private_net_packets,->WAN-iface]"
@@ -388,27 +411,6 @@ beginFwRules_FW_RUI() {
       fi
     else
       printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find WAN trusted hosts ${END_ROLLUP_IT}\n"
-      exit 1
-    fi
-  fi
-
-  if [ "${in_tcp_wan_port_set}" != 'nd' ]; then
-    if [ -n "$(ipset list -n | grep "${in_tcp_wan_port_set}")" ]; then
-      if [[ "${is_synproxy}" == "true" ]]; then
-        prepareSYNPROXY_FW_RUI
-        inFwRuleSYNPROXY_FW_RUI "${WAN_IFACE_FW_RUI}" "${LO_IFACE_FW_RUI}" "${in_tcp_wan_port_set}"
-      else
-        iptables -v -A INPUT -p tcp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
-          -m set --match-set "${in_tcp_wan_port_set}" dst \
-          -m limit --limit 3/minute --limit-burst 3 \
-          -j LOG --log-prefix "iptables [WAN{new,TCP}->INPUT]"
-
-        iptables -v -A INPUT -p tcp -i "${WAN_IFACE_FW_RUI}" -m state --state NEW \
-          -m set --match-set "${in_tcp_wan_port_set}" dst \
-          -j ACCEPT
-      fi
-    else
-      printf "${debug_prefix} ${RED_ROLLUP_IT} Error: can't find INPUT TCP WAN port set ${END_ROLLUP_IT}\n"
       exit 1
     fi
   fi

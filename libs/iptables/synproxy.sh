@@ -76,14 +76,14 @@ inFwRuleSYNPROXY_FW_RUI() {
   # to check if the SYNPROXY works: watch -n1 cat /proc/net/stat/synproxy
   iptables -A OUTPUT -o "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m limit --limit 3/minute --limit-burst 3 \
-    -m conntrack --ctstate NEW -j LOG --log-prefix "iptables [WAN{NEW}->OUTPUT{lo}]"
+    -m conntrack --ctstate NEW -j LOG --log-prefix "iptables OUT [SP{NEW}->OUTPUT{o-lo}]"
 
   iptables -A OUTPUT -o "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m conntrack --ctstate NEW -j ACCEPT
 
   iptables -A INPUT -i "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m limit --limit 3/minute --limit-burst 3 \
-    -m conntrack --ctstate NEW -j LOG --log-prefix "iptables [WAN{NEW}->INPUT{lo}]"
+    -m conntrack --ctstate NEW -j LOG --log-prefix "iptables INP [SP{NEW}->INPUT{i-lo}]"
 
   iptables -A INPUT -i "${lo_iface}" -p tcp -m set --match-set "${in_tcp_port_set}" dst \
     -m conntrack --ctstate NEW -j ACCEPT

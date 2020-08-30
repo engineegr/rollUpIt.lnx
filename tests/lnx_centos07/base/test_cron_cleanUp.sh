@@ -12,7 +12,7 @@ ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
 # ROOT_DIR_ROLL_UP_IT="/usr/local/src/rollUpIt.lnx"
 
 source "$ROOT_DIR_ROLL_UP_IT/libs/addColors.sh"
-source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"
+# source "$ROOT_DIR_ROLL_UP_IT/libs/addTty.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/commons.sh"
 source "$ROOT_DIR_ROLL_UP_IT/libs/sm.sh"
