@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -o errexit
-set -o xtrace
+# set -o xtrace
 set -o nounset
 
 ROOT_DIR_ROLL_UP_IT="/usr/local/src/post-scripts/rollUpIt.lnx"
@@ -22,14 +22,14 @@ elif [ $(isCentOS_SM_RUI) = "true" ]; then
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/commons.sh"
   source "$ROOT_DIR_ROLL_UP_IT/libs/lnx_centos07/sm.sh"
 else
-  onFailed_SM_RUI "Error: can't determine the OS type"
+  onFailed_SM_RUI "1" "Error: can't determine the OS type"
   exit 1
 fi
 #:
 #: Suppress progress bar
 #: It is used in case of the PXE installation
 #:
-SUPPRESS_PB_COMMON_RUI="TRUE"
+SUPPRESS_PB_COMMON_RUI="FALSE"
 
 #:
 #: PXE is not able to operate the systemd during installation
@@ -43,23 +43,28 @@ main() {
   printf "${debug_prefix} ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 
   local user_name="${1:-"gonzo"}"
-  local -r pwd='saAWeCFm03FjY'
-  local home_dir="nd"
-
-  [[ "${user_name}" == "root" ]] && home_dir="/root" || home_dir="/home/${user_name}"
+  local pwd=""
+  local prompt=""
+  # password quality we can define in /etc/security/pwquality.conf
+  printf "\nEnter password for the user [${user_name}]\n"
+  # from @https://stackoverflow.com/questions/1923435/how-do-i-echo-stars-when-reading-password-with-read
+  unset pwd
+  while IFS= read -p "$prompt" -r -s -n 1 char; do
+    if [[ $char == $'\0' ]]; then
+      break
+    fi
+    prompt='*'
+    pwd+="$char"
+  done
 
   # unless Progress Bar won't work
-  yum -y install bc
+  if [ $(isCentOS_SM_RUI) = "true" ]; then
+     yum -y install bc
+  fi
 
   installPackages_SM_RUI
   baseSetup_SM_RUI
-  prepareUser_SM_RUI "$user_name" "$pwd"
-
-  if [ ! -d "${home_dir}" ]; then
-    onFailed_SM_RUI "-1" "Error: there is no home dir for the user (${user_name})"
-    exit 1
-  fi
-  ln -sf "${ROOT_DIR_ROLL_UP_IT}" "${home_dir}/rui"
+  prepareUser_SM_RUI ${user_name} $pwd
 
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
 }

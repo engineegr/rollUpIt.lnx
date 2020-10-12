@@ -45,28 +45,13 @@ main() {
 
   local -r exec_user="$(whoami)"
   local -r sudo_user="${SUDO_USER:-}"
-  local -r user="${1:-$(whoami)}"
-  local pwd=""
-  local prompt=""
-
-  # password quality we can define in /etc/security/pwquality.conf
-  printf "\nEnter password for the user [$user]\n"
-
-  # from @https://stackoverflow.com/questions/1923435/how-do-i-echo-stars-when-reading-password-with-read
-  unset pwd
-  while IFS= read -p "$prompt" -r -s -n 1 char; do
-    if [[ $char == $'\0' ]]; then
-      break
-    fi
-    prompt='*'
-    pwd+="$char"
-  done
-
-  if [ -z "$pwd" ]; then
-    onErrors_SM_RUI "$debug_prefix ${RED_ROLLUP_IT} Empty password  ${END_ROLLUP_IT}"
-    exit 1
+  if [[ -z "${sudo_user}" ]]; then
+    skeletonUserHome_SM_RUI "${exec_user}"
+  elif [[ -n "${sudo_user}" &&  "${exec_user}" == "${sudo_user}" ]]; then
+    doRunSkeletonUserHome_SM_RUI "${exec_name}"
+  else
+    printf "${MAG_ROLLUP_IT} ${debug_prefix} Please, run skeleton home dir script on behalf of the target user [ ${exec_name} ]"
   fi
-  prepareUser_SM_RUI "$user" "$pwd"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER the function ${END_ROLLUP_IT} \n"
 }

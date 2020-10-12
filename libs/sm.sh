@@ -7,7 +7,11 @@
 PXE_INSTALLATION_SM_RUI="FALSE"
 
 isDebian_SM_RUI() {
-  [[ -n "$(cat /etc/*-release | egrep "Debian")" ]] && echo "true" || echo "false"
+  [[ -n "$(cat /etc/*-release | egrep "Debian|Ubuntu")" ]] && echo "true" || echo "false"
+}
+
+isUbuntu_SM_RUI() {
+  [[ -n "$(cat /etc/*-release | egrep "Ubuntu")" ]] && echo "true" || echo "false"
 }
 
 isCentOS_SM_RUI() {
@@ -23,23 +27,26 @@ prepareUser_SM_RUI() {
   printf "${debug_prefix} Enter the function\n"
   printf "${debug_prefix} [$1] parameter #1 \n"
 
-  if [[ -z "$1" ]]; then
-    printf "${RED_ROLLUP_IT} ${debug_prefix} Error: No parameters passed into the ${END_ROLLUP_IT}\n" >&2
+  local -r user_name="${1:-$(whoami)}"
+
+  if [[ -z "$2" ]]; then
+    onErrors_SM_RUI "${debug_prefix} Please, specify a password"
     exit 1
   fi
+  local -r pwd="$2"
+  local -r isExist="$(getent passwd | cut -d: -f1 | grep ${user_name})"
 
-  local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
   if [[ -z "$isExist" ]]; then
     printf "${debug_prefix} The user doesn't exist \n"
-    createAdmUser_SM_RUI "$1" "$2"
+    createAdmUser_SM_RUI "${user_name}" "${pwd}"
   else
     printf "${debug_prefix} The user exists\n"
-    echo "$1:$2" | chpasswd -e
+    echo "${user_name}:${pwd}" | chpasswd
     onFailed_SM_RUI "$?" "\nError: Can't set user password  [echo "$1:$2" | chpasswd -e]\n"
-    chage -d 0 "$1"
+    chage -d 0 "${user_name}"
     onFailed_SM_RUI "$?" "\nError: Can't force the user to change his password [chage -d 0 $1]\n"
   fi
-  if [[ "$1" != "root" ]]; then
+  if [[ "${user_name}" != "root" ]]; then
     makeUserAsAdmin_SM_RUI "$1"
   fi
 
@@ -47,17 +54,17 @@ prepareUser_SM_RUI() {
   local -r sudo_user="${SUDO_USER:-}"
 
   if [[ -z "${sudo_user}" ]]; then
-    if [[ "$1" == "${exec_user}" ]]; then
-      skeletonUserHome_SM_RUI "$1"
-    elif [[ "$1" == 'root' ]]; then
-      doRunSkeletonUserHome_SM_RUI "$1"
+    if [[ "${user_name}" == "${exec_user}" ]]; then
+      skeletonUserHome_SM_RUI "${user_name}"
     else
-      onErrors_SM_RUI "$debug_prefix You don't have enough perms"
-      exit 1
+      printf "${MAG_ROLLUP_IT} ${debug_prefix} Please, run skeleton home dir script on behalf of the target user [ ${user_name} ]"
     fi
-  elif [[ -n "${sudo_user}" ]]; then
-    doRunSkeletonUserHome_SM_RUI "$1"
+  elif [[ -n "${sudo_user}" && "${user_name}" == "${sudo_user}" ]]; then
+    doRunSkeletonUserHome_SM_RUI "${user_name}"
+  else
+    printf "${MAG_ROLLUP_IT} ${debug_prefix} Please, run skeleton home dir script on behalf of the target user [ ${user_name} ]"
   fi
+
   printf "${debug_prefix} Exit the function \n"
 }
 
@@ -101,15 +108,15 @@ skeletonUserHome_SM_RUI() {
       exit 1
     fi
 
-    #    refused to use YouCompleteMe because of error "Unavailable: unable to load Python": https://github.com/ycm-core/YouCompleteMe/issues/3323
-    #    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
-    #    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
-    #    python install.py --clang-completer
-    #    rc="$?"
-    #    if [ "$rc" -ne 0 ]; then
-    #      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
-    #      exit 1
-    #    fi
+  #    refused to use YouCompleteMe because of error "Unavailable: unable to load Python": https://github.com/ycm-core/YouCompleteMe/issues/3323
+  #    printf "${MAG_ROLLUP_IT} ${debug_prefix} INFO: Compile YouCompleteMe deps [cd .vim/bundle/YouCompleteMe; sudo python install.py --clang-completer ] ${END_ROLLUP_IT}\n" >&2
+  #    cd "${user_home_dir}"/.vim/bundle/YouCompleteMe/
+  #    python install.py --clang-completer
+  #    rc="$?"
+  #    if [ "$rc" -ne 0 ]; then
+  #      onErrors_SM_RUI "${debug_prefix} Compiling YouComplete deps failed  \n"
+  #      exit 1
+  #    fi
   else
     printf "${MAG_ROLLUP_IT} $debug_prefix INFO: dotfiles has been already installed ${END_ROLLUP_IT}\n" >&2
   fi
@@ -394,9 +401,21 @@ installDefaults_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
-  local -r def_pkg_list=("make" "ntp" "gcc" "git-core" "sudo"
-    "git" "tcpdump" "wget" "lsof"
-    "net-tools" "curl" "python" "python-pip")
+  local def_pkg_list=''
+
+  if [ -n "$(isUbuntu_SM_RUI)" ]; then
+    def_pkg_list=(
+      "make" "ntp" "gcc" "git-core" "sudo"
+      "git" "tcpdump" "wget" "lsof" "tmux" "vim"
+      "net-tools" "curl" "python3" "python3-pip"
+    )
+  else
+    def_pkg_list=(
+      "make" "ntp" "gcc" "git-core" "sudo"
+      "git" "tcpdump" "wget" "lsof"
+      "net-tools" "curl" "python3" "python-pip"
+    )
+  fi
 
   runInBackground_COMMON_RUI "installPkgList_COMMON_RUI def_pkg_list \"\""
 
@@ -531,10 +550,10 @@ setupNtpd_SM_RUI() {
     cp -f "/etc/ntp.conf" "/etc/ntp.conf.orig"
     cat <<EOF >>/etc/ntp.conf
 # Use public servers from the pool.ntp.org project
-server 0.ru.pool.ntp.org iburst      
-server 1.ru.pool.ntp.org iburst      
-server 2.ru.pool.ntp.org iburst      
-server 3.ru.pool.ntp.org iburst
+        server 0.ru.pool.ntp.org iburst      
+        server 1.ru.pool.ntp.org iburst      
+        server 2.ru.pool.ntp.org iburst      
+        server 3.ru.pool.ntp.org iburst
 EOF
   fi
 
