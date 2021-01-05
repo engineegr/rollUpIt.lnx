@@ -34,6 +34,7 @@ prepareUser_SM_RUI() {
     exit 1
   fi
   local -r pwd="$2"
+  printf "${debug_prefix} Password: $pwd"
   local -r isExist="$(getent passwd | cut -d: -f1 | grep ${user_name})"
 
   if [[ -z "$isExist" ]]; then
@@ -201,11 +202,12 @@ createAdmUser_SM_RUI() {
   local -r debug_prefix="debug: [$0] [ $FUNCNAME ] : "
   printf "$debug_prefix Enter\n"
   printf "$debug_prefix [$1] parameter #1 \n"
+  printf "$debug_prefix [$2] parameter #2 \n"
 
   if [[ -n "$1" && -n "$2" ]]; then
     local rc=0
     local -r user_name="${1:-"gonzo"}"
-    local -r pwd="${2:-"saAWeCFm03FjY"}"
+    local -r pwd="${2:-"super"}"
 
     local isExist="$(getent shadow | cut -d : -f1 | grep $1)"
     if [[ -n "$isExist" ]]; then
@@ -214,15 +216,21 @@ createAdmUser_SM_RUI() {
     fi
 
     printf "debug: [ $0 ] There is no [ $user_name ] user, let's create him \n"
+    if [ -n "$(isUbuntu_SM_RUI)" ]; then
+	    adduser $1 --gecos "$1" --disabled-password # not CentOS compatible
+    else
+	    adduser $1
+    fi
+
     # adduser $1 --gecos "$1" --disabled-password # not CentOS compatible
-    adduser $1
     rc=$?
     if [[ $rc -ne 0 ]]; then
       printf "${RED_ROLLUP_IT} $debug_prefix Error: Can't create the user: [ adduser $1 --gecos "$1" --disabled-password ]${END_ROLLUP_IT}" >&2
       exit 1
     fi
 
-    echo "$user_name:$pwd" | chpasswd -e
+    printf "$debug_prefix [$pwd] parameter pwd \n"
+    echo "$user_name:$pwd" | chpasswd
     rc=$?
     if [[ $rc -ne 0 ]]; then
       printf "${RED_ROLLUP_IT} $debug_prefix Error: can't set password to the user: [  echo "$user_name:$pwd" | chpasswd -e ] Delete the user ${END_ROLLUP_IT} \n" >&2
@@ -393,7 +401,12 @@ installPackages_SM_RUI() {
 preparePythonEnv_SM_RUI() {
   upgradePip3_7_INSTALL_RUI
   install_virtualenvwrapper_INSTALL_RUI
-  local -r pip_bin="$(findBin_SM_RUI 'pip3.7')"
+  local pip_bin="$(findBin_SM_RUI 'pip3.7')"
+
+  if [ -n "$(isUbuntu_SM_RUI)" ]; then
+	  pip_bin="$(findBin_SM_RUI 'pip3')"   
+  fi
+
   "${pip_bin}" install Pygments
 }
 
@@ -508,7 +521,7 @@ baseSetup_SM_RUI() {
   setupNtpd_SM_RUI
   setupLogging_SM_RUI
   setupUnattendedUpdates_SM_RUI
-  setupPip_SM_RUI
+  # setupPip_SM_RUI
   prepareSSH_SM_RUI
   prepareSudoers_SM_RUI
 
@@ -592,7 +605,11 @@ setupPip_SM_RUI() {
 
   upgradePip3_7_INSTALL_RUI
   install_virtualenvwrapper_INSTALL_RUI
-  local -r pip_bin="$(findBin_SM_RUI 'pip3.7')"
+  local pip_bin="$(findBin_SM_RUI 'pip3.7')"
+
+  if [ -n "$(isUbuntu_SM_RUI)" ]; then
+	  pip_bin="$(findBin_SM_RUI 'pip3')"   
+  fi
   "${pip_bin}" install Pygments
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT the function [ $FUNCNAME ] ${END_ROLLUP_IT} \n"
