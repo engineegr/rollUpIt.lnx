@@ -11,12 +11,12 @@ doUpdate_SM_RUI() {
 
   apt-get -y full-upgrade
   local -r pre_pkgs=(
-    "bc" "debconf-utils" "unattended-upgrades" "apt-listchanges"
-  )
-  installPkgList_COMMON_RUI pre_pkgs ""
-  onFailed_SM_RUI $? "Failed apt-get preparation"
+  "bc" "debconf-utils" "unattended-upgrades" "apt-listchanges"
+)
+installPkgList_COMMON_RUI pre_pkgs ""
+onFailed_SM_RUI $? "Failed apt-get preparation"
 
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
+printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
 
 doInstallCustoms_SM_RUI() {
@@ -24,40 +24,41 @@ doInstallCustoms_SM_RUI() {
   printf "$debug_prefix ${GRN_ROLLUP_IT} ENTER ${END_ROLLUP_IT} \n"
 
   local -r pkg_list=(
-    "python-dev" "build-essential"
-    "zlib1g-dev" "libncurses5-dev" "libgdbm-dev" "libnss3-dev" "openssl"
-    "libssl-dev" "libreadline-dev" "libffi-dev" "ntpdate" "ruby-dev"
-    "libbz2-dev" "libsqlite3-dev" "dbus" "llvm" "libncursesw5-dev"
-    "xz-utils" "tk-dev" "liblzma-dev" "python-openssl" "dnsutils"
+  "python-dev" "build-essential"
+  "zlib1g-dev" "libncurses5-dev" "libgdbm-dev" "libnss3-dev" "openssl"
+  "libssl-dev" "libreadline-dev" "libffi-dev" "ntpdate" "ruby-dev"
+  "libbz2-dev" "libsqlite3-dev" "dbus" "llvm" "libncursesw5-dev"
+  "xz-utils" "tk-dev" "liblzma-dev" "python-openssl" "dnsutils"
+  "locales"
+)
+runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""
+
+local deps_list=''
+local cmd_list=''
+if [ -n "$(isUbuntu_SM_RUI)" ]; then
+  deps_list=(
+    "install_golang_INSTALL_RUI"
   )
-  runInBackground_COMMON_RUI "installPkgList_COMMON_RUI pkg_list \"\""
+  cmd_list=(
+    "install_grc_INSTALL_RUI"
+    "install_rcm_INSTALL_RUI"
+  )
+else
+  deps_list=(
+    "install_python3_7_INSTALL_RUI" "install_golang_INSTALL_RUI"
+  )
+  cmd_list=(
+    "install_tmux_INSTALL_RUI"
+    "install_vim8_INSTALL_RUI"
+    "install_grc_INSTALL_RUI"
+    "install_rcm_INSTALL_RUI"
+  )
+fi
 
-  local deps_list=''
-  local cmd_list=''
-  if [ -n "$(isUbuntu_SM_RUI)" ]; then
-    deps_list=(
-      "install_golang_INSTALL_RUI"
-    )
-    cmd_list=(
-      "install_grc_INSTALL_RUI"
-      "install_rcm_INSTALL_RUI"
-    )
-  else
-    deps_list=(
-      "install_python3_7_INSTALL_RUI" "install_golang_INSTALL_RUI"
-    )
-    cmd_list=(
-      "install_tmux_INSTALL_RUI"
-      "install_vim8_INSTALL_RUI"
-      "install_grc_INSTALL_RUI"
-      "install_rcm_INSTALL_RUI"
-    )
-  fi
+runCmdListInBackground_COMMON_RUI deps_list
+runCmdListInBackground_COMMON_RUI cmd_list
 
-  runCmdListInBackground_COMMON_RUI deps_list
-  runCmdListInBackground_COMMON_RUI cmd_list
-
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
+printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
 
 doGetLocaleStr() {
@@ -91,14 +92,14 @@ doRunSkeletonUserHome_SM_RUI() {
   __FUNC_INS_SHFMT=$(declare -f install_vim_shfmt_INSTALL_RUI)
 
   sudo -u "$1" bash -c ". $ROOT_DIR_ROLL_UP_IT/libs/addColors.sh;   
-. $ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh; 
-. $ROOT_DIR_ROLL_UP_IT/libs/install/install.sh;
-. $ROOT_DIR_ROLL_UP_IT/libs/commons.sh;
-. $ROOT_DIR_ROLL_UP_IT/libs/sm.sh;
-. $ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh;
-. $ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh;
-$__FUNC_SKEL; $__FUNC_ONERRS; $__FUNC_INS_SHFMT;
-skeletonUserHome_SM_RUI $1"
+  . $ROOT_DIR_ROLL_UP_IT/libs/addRegExps.sh; 
+  . $ROOT_DIR_ROLL_UP_IT/libs/install/install.sh;
+  . $ROOT_DIR_ROLL_UP_IT/libs/commons.sh;
+  . $ROOT_DIR_ROLL_UP_IT/libs/sm.sh;
+  . $ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/commons.sh;
+  . $ROOT_DIR_ROLL_UP_IT/libs/lnx_debian09/sm.sh;
+  $__FUNC_SKEL; $__FUNC_ONERRS; $__FUNC_INS_SHFMT;
+  skeletonUserHome_SM_RUI $1"
 
   printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
 }
@@ -246,12 +247,12 @@ else
   // Do "apt-get autoclean" every n-days (0=disable).
   APT::Periodic::AutocleanInterval "7";
 EOFF
-  else
-    onFailed_SM_RUI $? "Error: there is no /etc/apt/apt.conf.d/20auto-upgrades"
-  fi
+else
+  onFailed_SM_RUI $? "Error: there is no /etc/apt/apt.conf.d/20auto-upgrades"
+        fi
 
-  set -o nounset
-  sed -i -E 's/^(email_address=).*$/\1gonzo.soc@gmail.com/g' "/etc/apt/listchanges.conf"
+        set -o nounset
+        sed -i -E 's/^(email_address=).*$/\1gonzo.soc@gmail.com/g' "/etc/apt/listchanges.conf"
 
-  printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
-}
+        printf "$debug_prefix ${GRN_ROLLUP_IT} EXIT ${END_ROLLUP_IT} \n"
+      }
