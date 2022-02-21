@@ -59,11 +59,11 @@ main() {
 
   # unless Progress Bar won't work
   if [ $(isCentOS_SM_RUI) = "true" ]; then
-     yum -y install bc
+    yum -y install bc
   fi
 
-#  installPackages_SM_RUI
-#  baseSetup_SM_RUI
+  installPackages_SM_RUI
+  baseSetup_SM_RUI
   prepareUser_SM_RUI ${user_name} $pwd
 
   printf "${debug_prefix} ${GRN_ROLLUP_IT} EXIT the function ${END_ROLLUP_IT} \n"
