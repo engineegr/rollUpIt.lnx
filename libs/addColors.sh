@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 RED_ROLLUP_IT=$'\e[1;31m'
 GRN_ROLLUP_IT=$'\e[1;32m'
