@@ -252,3 +252,4 @@ https://www.linuxsysadmins.com/migrate-single-partition-boot-device-to-lvm/)
 >2. [RAID couldn't be loaded by dracut](https://forums.centos.org/viewtopic.php?t=54901)
 >3. [Why dracut can't load RAID automatically in CentOS 7](https://unix.stackexchange.com/questions/266119/md-raid-not-mounted-by-dracut)
 >4. [How to reinstall grub2 in CentOS 7](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/system_administrators_guide/sec-reinstalling_grub_2)
+>5. https://rebrainme.com/blog/linux/programmnyj-raid-v-linux-chast-1/

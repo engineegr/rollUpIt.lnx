@@ -3,19 +3,13 @@
 
 <!-- code_chunk_output -->
 
-- [System Infastructure](#system-infastructure)
-  - [System groups](#system-groups)
-  - [Infrastructure](#infrastructure)
-  - [Links](#links)
+- [Infrastructure](#infrastructure)
+- [System groups and users](#system-groups-and-users)
+- [Links](#links)
 
 <!-- /code_chunk_output -->
 
-# System Infastructure
-
-## System groups
-After installation it creates 2 group: *SYSDBA* and *SYSOPER*, see more info [here](https://docs.oracle.com/en/database/oracle/oracle-database/19/admqs/administering-user-accounts-and-security.html#GUID-2033E766-8FE6-4FBA-97E0-2607B083FA2C)
-
-When we install from rpm pacakge, it automatically create group oracle user, groups - *oinstall* and *dba* groups
+<h1>System Infastructure</h1>
 
 ## Infrastructure
 **What is Ora Inventory group?**
@@ -78,6 +72,41 @@ Oracle Restart starts up components in the proper order when the database host i
 Oracle Restart runs periodic checks to monitor the health of Oracle components. If a check operation fails for a component, then the component is shut down and restarted.
 
 **OFA Infrastructure Sample** See here: https://docs.oracle.com/en/database/oracle/oracle-database/19/ladbi/optimal-flexible-architecture-file-path-examples.html#GUID-BB3EE4F7-50F4-4A2D-8A0D-96B7CC44029B
+
+**Inventory file**
+Location: */etc/oraInst.loc*
+Purpose:
+* name of the invenory group
+* Oracle base dir for inventory location
+* All new Oracle user must have rw permissions to the dir
+```
+inventory_loc=/u01/app/oraInventory
+inst_group=oinstall
+```
+
+## System groups and users
+After installation it creates 2 group: *SYSDBA* (dba) and *SYSOPER* (oper), see more info [here](https://docs.oracle.com/en/database/oracle/oracle-database/19/admqs/administering-user-accounts-and-security.html#GUID-2033E766-8FE6-4FBA-97E0-2607B083FA2C)
+
+When we install from rpm pacakge, it automatically create group oracle user, groups - *oinstall* and *dba* groups
+In Oracle documentation, a user created to own only Oracle Grid Infrastructure software installations is called the Grid user (**grid**). This user owns both the Oracle Clusterware and Oracle Automatic Storage Management binaries. A user created to own either all Oracle installations, or one or more Oracle database installations, is called the Oracle user (**oracle**). You can have only one Oracle Grid Infrastructure installation owner, but you can have different Oracle users to own different installations.
+
+The **OSDBA** group (typically, **dba**)
+
+You must create this group the first time you install Oracle Database software on the system. This group identifies operating system user accounts that have database administrative privileges (the SYSDBA privilege).
+
+If you do not create separate OSDBA, OSOPER, and OSASM groups for the Oracle ASM instance, then operating system user accounts that have the SYSOPER and SYSASM privileges must be members of this group. The name used for this group in Oracle code examples is dba. If you do not designate a separate group as the OSASM group, then the OSDBA group you define is also by default the OSASM group.
+
+The **OSOPER** group for Oracle Database (typically, **oper**)
+
+OSOPER grants the OPERATOR privilege to start up and shut down the database (the SYSOPER privilege). By default, members of the OSDBA group have all privileges granted by the SYSOPER privilege.
+
+**Granular separate privileges with groups**
+
+See here: https://docs.oracle.com/en/database/oracle/oracle-database/19/ladbi/extended-oracle-database-groups-for-job-role-separation.html
+
+**Limit user resources**
+
+https://docs.oracle.com/en/database/oracle/oracle-database/19/ladbi/checking-resource-limits-for-oracle-software-installation-users.html
 
 
 ## Links

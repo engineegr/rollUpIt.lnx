@@ -30,7 +30,8 @@ Version: **19c**
 * The following steps are implemented during preinstall rpm deploy:
   * Create groups *oinstall*, *dba*: *chown oracle:oinstall /u01/app/oracle*
   * Create user *oracle* and provide him privileges: *chown oracle:oinstall /u01/app/oracle*
-
+* Create LV: /dev/oradb_vg/oradb_lv (cap=40GB, xfs)
+  
 Use the **Oracle Database Preinstallation RPM** only for the first time, it does
 
 * Automatically downloads and installs any additional RPM packages needed for installing Oracle Grid Infrastructure and Oracle Database, and resolves any dependencies
@@ -86,6 +87,8 @@ Check:
 [ilya@localhost oracle_db]$ cat /sys/block/sda/queue/scheduler
 none [mq-deadline] kyber bfq
 ```
+
+Stop on https://docs.oracle.com/en/database/oracle/oracle-database/19/ladbi/identifying-storage-requirements-for-oracle-automatic-storage-management.htmlgut
 
 ## Links
 * https://docs.oracle.com/en/database/oracle/oracle-database/19/ladbi/overview-of-oracle-linux-configuration-with-oracle-rpms.html
